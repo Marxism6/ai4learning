@@ -6,8 +6,8 @@ from typing import Literal
 
 from app.prompts import get_system_prompt
 from app.blocks import BLOCKS, get_block_context
-from app.progress import get_progress, update_block_progress
-from app.llm import chat_completion, vision_chat_completion
+from app.progress import get_progress, get_completed_count, update_block_progress
+from app.llm import LLMClient
 
 router = APIRouter()
 
@@ -79,7 +79,8 @@ async def chat(request: ChatRequest):
     messages.append({"role": "user", "content": request.message})
 
     try:
-        reply = await chat_completion(
+        llm = LLMClient()
+        reply = await llm.chat(
             system_prompt=system_prompt,
             messages=messages,
         )
@@ -151,7 +152,8 @@ async def upload_image(
 
     # Send to vision LLM
     try:
-        recognized = await vision_chat_completion(
+        llm = LLMClient()
+        recognized = await llm.vision(
             system_prompt=VISION_PROMPT,
             image_data=image_data,
             image_mime=file.content_type,
@@ -177,14 +179,10 @@ async def read_progress(username: str):
     completed_count, and total_blocks.
     """
     data = get_progress(username)
-    completed_count = sum(
-        1 for b in data["blocks"].values()
-        if b["status"] == "mastered"
-    )
     return {
         "username": data["username"],
         "blocks": data["blocks"],
-        "completed_count": completed_count,
+        "completed_count": get_completed_count(username),
         "total_blocks": len(BLOCKS),
     }
 
@@ -212,13 +210,9 @@ async def write_progress(username: str, update: ProgressUpdateRequest):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    completed_count = sum(
-        1 for b in data["blocks"].values()
-        if b["status"] == "mastered"
-    )
     return {
         "username": data["username"],
         "blocks": data["blocks"],
-        "completed_count": completed_count,
+        "completed_count": get_completed_count(username),
         "total_blocks": len(BLOCKS),
     }

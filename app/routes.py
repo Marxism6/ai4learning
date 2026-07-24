@@ -130,10 +130,18 @@ async def upload_image(
                    f"Supported formats: PNG, JPG, WEBP.",
         )
 
+    # Check Content-Length before reading (if available)
+    if file.size is not None and file.size > MAX_UPLOAD_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File too large ({file.size / 1024 / 1024:.1f} MB). "
+                   f"Maximum size: 10 MB.",
+        )
+
     # Read file
     image_data = await file.read()
 
-    # Validate size
+    # Validate size after read (defensive, for chunked transfers)
     if len(image_data) > MAX_UPLOAD_SIZE:
         raise HTTPException(
             status_code=400,

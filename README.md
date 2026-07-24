@@ -192,6 +192,129 @@ uv run serve
 └── pyproject.toml          # 项目配置
 ```
 
+## 数据存储
+
+本项目的用户数据分为两部分：**服务端文件**（学习进度）和**浏览器 localStorage**（会话状态和偏好）。
+
+### 服务端：用户进度文件
+
+**位置：** `data/<username>.json`（项目根目录下的 `data/` 文件夹，运行时自动创建）
+
+**命名规则：** 用户名经过安全过滤（仅保留字母、数字、`.`、`_`、`-`、空格），非法字符被移除。空用户名回退为 `anonymous.json`。
+
+**文件格式：** UTF-8 编码的 JSON，2 空格缩进。
+
+**完整结构：**
+
+```json
+{
+  "username": "张三",
+  "blocks": {
+    "interpolation": {
+      "status": "mastered",
+      "mastery_level": 3,
+      "updated_at": "2026-07-25T08:30:12.456789+00:00"
+    },
+    "newton-method": {
+      "status": "in-progress",
+      "mastery_level": 1,
+      "updated_at": "2026-07-25T09:15:03.123456+00:00"
+    },
+    "gauss-elimination": {
+      "status": "not-started",
+      "mastery_level": 0,
+      "updated_at": null
+    }
+  }
+}
+```
+
+**字段说明：**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `username` | string | 用户名（与文件名对应） |
+| `blocks` | object | 以知识块 slug 为 key 的进度字典 |
+| `blocks.<slug>.status` | string | 块状态：`"not-started"` / `"in-progress"` / `"mastered"` |
+| `blocks.<slug>.mastery_level` | int | 掌握等级：0（未开始）、1（手动执行）、2（方法选择）、3（理论理解） |
+| `blocks.<slug>.updated_at` | string \| null | 最后更新时间（ISO 8601 UTC），从未更新则为 `null` |
+
+**状态自动推导规则：**
+- `mastery_level >= 3` → status 自动设为 `"mastered"`
+- `mastery_level >= 1` 且当前 status 为 `"not-started"` → 自动设为 `"in-progress"`
+
+**触发写入的时机：**
+- 学生首次在某块中交互 → 前端 POST `status: "in-progress"`
+- Agent 回复中检测到 `:::mastered:::` 标记 → 前端 POST `status: "mastered", mastery_level: 3`
+
+**注意事项：**
+- 每个用户一个独立文件，互不干扰
+- 文件在首次 `GET /api/progress/{username}` 时不创建（只在内存中补全默认值），首次 `POST` 时才写入磁盘
+- `data/` 目录已加入 `.gitignore`，不会被提交到版本控制
+
+---
+
+### 客户端：localStorage
+
+**前缀：** 所有 key 以 `nat-` 开头（Numerical Analysis Tutor 缩写）
+
+**存储位置：** 浏览器 localStorage（绑定到 `http://localhost:8000` 源）
+
+| Key | 类型 | 说明 | 示例值 |
+|-----|------|------|--------|
+| `nat-username` | string | 当前登录用户名 | `"张三"` |
+| `nat-theme` | string | 颜色主题 | `"eye-protection"` 或 `"standard"` |
+| `nat-memory` | string | 跨会话记忆开关 | `"1"`（开启）或 `"0"`（关闭） |
+| `nat-session-<username>` | JSON string | 当前会话的对话历史和块选择 | 见下方 |
+
+**`nat-session-<username>` 结构：**
+
+```json
+{
+  "history": [
+    {"role": "user", "content": "什么是牛顿法？"},
+    {"role": "assistant", "content": "你觉得求一个函数的零点意味着什么？..."}
+  ],
+  "blockSlug": "newton-method"
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `history` | array | 对话消息数组，每条含 `role`（user/assistant）和 `content` |
+| `blockSlug` | string \| null | 当前选中的知识块 slug，未选则为 `null` |
+
+**生命周期：**
+- 每次消息交换后自动保存（`saveSession()`）
+- 刷新页面时自动恢复（`restoreSession()`）
+- 点击 "+ NEW" 新对话按钮时清空
+- 切换用户时读取对应用户的 session key
+
+---
+
+### 数据流总览
+
+```
+┌─ Browser ─────────────────────────────────────────────┐
+│  localStorage                                         │
+│  ├── nat-username          (身份标识)                 │
+│  ├── nat-theme             (UI 偏好)                  │
+│  ├── nat-memory            (记忆开关)                 │
+│  └── nat-session-<user>    (对话历史 + 当前块)        │
+└───────────────────────────────────────────────────────┘
+         │ POST /api/progress
+         ▼
+┌─ Server (data/) ──────────────────────────────────────┐
+│  data/<username>.json      (各块掌握进度)             │
+└───────────────────────────────────────────────────────┘
+```
+
+**设计原则：**
+- 对话历史存客户端（刷新不丢，但不跨设备）
+- 学习进度存服务端（跨浏览器保持，支持两人共用一台机器）
+- 无数据库依赖，纯 JSON 文件，可直接文本编辑器查看/备份
+- 无密码、无加密——MVP 阶段信任本地环境
+
 ## 运行测试
 
 ```bash

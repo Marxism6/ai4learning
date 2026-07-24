@@ -1,6 +1,6 @@
 """API routes for the Socratic Numerical Analysis Tutor."""
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Form
 from pydantic import BaseModel
 from typing import Literal
 
@@ -12,9 +12,18 @@ from app.llm import LLMClient
 router = APIRouter()
 
 
-def get_llm_client() -> LLMClient:
-    """FastAPI dependency: provides an LLMClient instance."""
-    return LLMClient()
+def get_llm_client(request: Request) -> LLMClient:
+    """FastAPI dependency: provides an LLMClient instance.
+
+    Prioritises request headers (X-API-Key, X-Model, X-API-Base) over
+    environment variables, allowing browser-set keys to override env vars.
+    Empty headers are treated as absent (backend falls back to env/default).
+    """
+    return LLMClient(
+        api_key=request.headers.get("x-api-key") or None,
+        model=request.headers.get("x-model") or None,
+        api_base=request.headers.get("x-api-base") or None,
+    )
 
 
 class ChatRequest(BaseModel):
@@ -50,6 +59,23 @@ async def list_blocks():
     prerequisites dynamically at runtime per spec.
     """
     return BLOCKS
+
+
+# === Models ===
+
+@router.get("/models")
+async def list_models(llm: LLMClient = Depends(get_llm_client)):
+    """Fetch available models from the LLM API provider.
+
+    Calls the OpenAI-compatible /models endpoint (with Ollama /api/tags fallback).
+    Returns a sorted list of model IDs.
+    Requires a valid API key (from env var, settings panel, or request header).
+    """
+    try:
+        models = await llm.list_models()
+        return {"models": models}
+    except RuntimeError as e:
+        raise HTTPException(status_code=502, detail=str(e))
 
 
 # === Chat ===

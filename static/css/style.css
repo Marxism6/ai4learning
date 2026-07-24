@@ -510,6 +510,36 @@ body {
   cursor: not-allowed;
 }
 
+/* === Upload Button === */
+.btn-upload {
+  width: 36px;
+  height: 36px;
+  border-radius: 9999px;
+  background-color: transparent;
+  color: var(--ink-mute);
+  border: 1px solid var(--hairline);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 200ms ease, border-color 200ms ease;
+}
+
+.btn-upload:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.btn-upload:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-upload:active {
+  transform: scale(0.95);
+}
+
 /* === Typing Indicator === */
 .typing-indicator {
   display: flex;

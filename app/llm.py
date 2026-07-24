@@ -2,6 +2,7 @@
 
 import os
 import logging
+import base64
 from typing import AsyncGenerator
 
 import httpx
@@ -92,6 +93,98 @@ async def chat_completion(
         except (KeyError, IndexError) as e:
             logger.error("LLM API unexpected response: %s", e)
             raise RuntimeError("LLM API returned an unexpected response format") from e
+
+
+async def vision_chat_completion(
+    system_prompt: str,
+    image_data: bytes,
+    image_mime: str,
+    detail: str = "auto",
+    temperature: float = 0.5,
+    max_tokens: int = 1024,
+) -> str:
+    """Send an image to a vision-capable LLM and return recognized/extracted text.
+
+    The LLM is asked to recognize and transcribe any problem text, formulas,
+    or mathematical content visible in the image.
+
+    Args:
+        system_prompt: Instruction for what to do with the image.
+        image_data: Raw image bytes.
+        image_mime: MIME type of the image (e.g. image/png, image/jpeg).
+        detail: Vision detail level ("low", "high", or "auto").
+        temperature: Sampling temperature.
+        max_tokens: Maximum tokens in the response.
+
+    Returns:
+        The assistant's response text.
+
+    Raises:
+        RuntimeError: If the API call fails.
+    """
+    config = _get_config()
+    url = f"{config['api_base']}/chat/completions"
+
+    # Encode image to base64
+    b64_image = base64.b64encode(image_data).decode("utf-8")
+    data_url = f"data:{image_mime};base64,{b64_image}"
+
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "Please analyze the problem in this image and begin Socratic guidance."},
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": data_url,
+                        "detail": detail,
+                    },
+                },
+            ],
+        },
+    ]
+
+    body = {
+        "model": config["model"],
+        "messages": messages,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+    }
+
+    headers = {
+        "Authorization": f"Bearer {config['api_key']}",
+        "Content-Type": "application/json",
+    }
+
+    logger.info(
+        "Vision LLM request: model=%s, image=%s (%d bytes), detail=%s",
+        config["model"],
+        image_mime,
+        len(image_data),
+        detail,
+    )
+
+    async with httpx.AsyncClient(timeout=120.0) as client:
+        try:
+            response = await client.post(url, headers=headers, json=body)
+            response.raise_for_status()
+            data = response.json()
+            result = data["choices"][0]["message"]["content"]
+            logger.info("Vision LLM response received (length=%d)", len(result))
+            return result
+        except httpx.HTTPStatusError as e:
+            logger.error("Vision LLM error: %s %s", e.response.status_code, e.response.text)
+            raise RuntimeError(
+                f"Vision LLM returned {e.response.status_code}: {e.response.text}"
+            ) from e
+        except httpx.TimeoutException as e:
+            logger.error("Vision LLM timeout")
+            raise RuntimeError("Vision LLM request timed out") from e
+        except (KeyError, IndexError) as e:
+            logger.error("Vision LLM unexpected response: %s", e)
+            raise RuntimeError("Vision LLM returned an unexpected response format") from e
 
 
 async def chat_completion_stream(

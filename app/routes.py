@@ -1,13 +1,13 @@
 """API routes for the Socratic Numerical Analysis Tutor."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 from typing import Literal
 
 from app.prompts import get_system_prompt
 from app.blocks import BLOCKS, get_block_context
 from app.progress import get_progress, update_block_progress
-from app.llm import chat_completion
+from app.llm import chat_completion, vision_chat_completion
 
 router = APIRouter()
 
@@ -85,6 +85,76 @@ async def chat(request: ChatRequest):
         raise HTTPException(status_code=502, detail=str(e))
 
     return ChatResponse(reply=reply, block_slug=request.block_slug)
+
+
+# === Image Upload ===
+
+MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10 MB
+ALLOWED_MIME_TYPES = {
+    "image/png",
+    "image/jpeg",
+    "image/webp",
+}
+
+VISION_PROMPT = """You are a Socratic tutor for Numerical Analysis. A student has uploaded an image of a problem from their textbook or homework.
+
+Your task:
+1. Recognize and transcribe the problem text, including any mathematical formulas (output them in LaTeX format).
+2. Start Socratic guidance: ask a guiding question about the problem rather than solving it directly.
+3. If the image contains multiple problems, focus on the most prominent one and mention that there are others.
+
+Wrap display math in $$...$$ and inline math in $...$.
+Do NOT give the answer directly — begin with a Socratic question."""
+
+
+@router.post("/upload")
+async def upload_image(
+    file: UploadFile = File(...),
+    username: str = Form(...),
+    block_slug: str | None = Form(None),
+):
+    """Upload an image for problem recognition.
+
+    The image is sent to a vision-capable LLM for recognition.
+    The image is NOT stored on disk after processing.
+
+    Supported formats: PNG, JPG, WEBP. Max size: 10MB.
+    """
+    # Validate MIME type
+    if file.content_type not in ALLOWED_MIME_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file format: {file.content_type}. "
+                   f"Supported formats: PNG, JPG, WEBP.",
+        )
+
+    # Read file
+    image_data = await file.read()
+
+    # Validate size
+    if len(image_data) > MAX_UPLOAD_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File too large ({len(image_data) / 1024 / 1024:.1f} MB). "
+                   f"Maximum size: 10 MB.",
+        )
+
+    # Send to vision LLM
+    try:
+        recognized = await vision_chat_completion(
+            system_prompt=VISION_PROMPT,
+            image_data=image_data,
+            image_mime=file.content_type,
+        )
+    except RuntimeError as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+    # Image data is discarded after processing — never stored on disk
+    return {
+        "recognized_text": recognized,
+        "username": username,
+        "block_slug": block_slug,
+    }
 
 
 # === User Progress ===

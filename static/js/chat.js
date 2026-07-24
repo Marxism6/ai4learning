@@ -45,6 +45,8 @@
   const newConvButton = document.getElementById('newConvButton');
   const memoryToggle = document.getElementById('memoryToggle');
   const memorySlider = document.getElementById('memorySlider');
+  const uploadButton = document.getElementById('uploadButton');
+  const fileInput = document.getElementById('fileInput');
   const scrollAnchor = document.getElementById('scrollAnchor');
 
   // === Helpers ===
@@ -640,6 +642,120 @@
   });
 
   sendButton.addEventListener('click', handleSend);
+
+  // === Image Upload ===
+
+  uploadButton.addEventListener('click', function () {
+    if (state.isLoading) return;
+    fileInput.click();
+  });
+
+  fileInput.addEventListener('change', async function () {
+    var file = fileInput.files[0];
+    if (!file) return;
+    fileInput.value = ''; // reset so same file can be re-uploaded
+
+    // Validate size client-side
+    var maxSize = 10 * 1024 * 1024; // 10 MB
+    if (file.size > maxSize) {
+      addErrorMessage('File too large (' + (file.size / 1024 / 1024).toFixed(1) + ' MB). Maximum size: 10 MB.');
+      return;
+    }
+
+    // Validate type client-side
+    var validTypes = ['image/png', 'image/jpeg', 'image/webp'];
+    if (validTypes.indexOf(file.type) === -1) {
+      addErrorMessage('Unsupported file format. Supported formats: PNG, JPG, WEBP.');
+      return;
+    }
+
+    if (state.isLoading) return;
+    state.isLoading = true;
+    inputField.disabled = true;
+    sendButton.disabled = true;
+    uploadButton.disabled = true;
+
+    // Show uploading indicator
+    var indicator = document.createElement('div');
+    indicator.id = 'uploadIndicator';
+    indicator.className = 'message agent-message';
+    indicator.style.animation = 'none';
+    indicator.innerHTML =
+      '<div class="message-content">' +
+      '<p class="body-sm" style="color: var(--ink-mute);">Analyzing image...</p>' +
+      '</div>';
+    conversation.appendChild(indicator);
+    scrollToBottom();
+
+    try {
+      var formData = new FormData();
+      formData.append('file', file);
+      formData.append('username', state.username);
+      if (state.blockSlug) {
+        formData.append('block_slug', state.blockSlug);
+      }
+
+      var response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      indicator.remove();
+
+      if (!response.ok) {
+        var errorData = await response.json().catch(function () { return {}; });
+        throw new Error(errorData.detail || 'Upload failed: ' + response.status);
+      }
+
+      var data = await response.json();
+      var recognized = data.recognized_text;
+
+      // Show recognized problem in a problem card
+      var problemMsg = document.createElement('div');
+      problemMsg.className = 'message agent-message';
+      problemMsg.style.animation = 'none';
+      var problemContent = document.createElement('div');
+      problemContent.className = 'message-content';
+      problemContent.innerHTML =
+        '<div class="knowledge-tag" style="margin-bottom: 8px;">RECOGNIZED PROBLEM</div>';
+
+      var bodyDiv = document.createElement('div');
+      bodyDiv.className = 'problem-body';
+      var bodyHtml = markdownToHtml(recognized);
+      bodyDiv.innerHTML = bodyHtml;
+      problemContent.appendChild(bodyDiv);
+      problemMsg.appendChild(problemContent);
+      conversation.appendChild(problemMsg);
+
+      // Re-render KaTeX in the recognized content
+      if (window.renderMathInElement) {
+        try {
+          window.renderMathInElement(problemContent, {
+            delimiters: [
+              { left: '$$', right: '$$', display: true },
+              { left: '$', right: '$', display: false },
+            ],
+            throwOnError: false,
+          });
+        } catch (e) { /* ignore */ }
+      }
+
+      // Save to history
+      state.history.push({ role: 'assistant', content: recognized });
+      saveSession();
+    } catch (err) {
+      var uploadInd = document.getElementById('uploadIndicator');
+      if (uploadInd) uploadInd.remove();
+      addErrorMessage('Upload error: ' + err.message);
+    } finally {
+      state.isLoading = false;
+      inputField.disabled = false;
+      sendButton.disabled = false;
+      uploadButton.disabled = false;
+      inputField.focus();
+      scrollToBottom();
+    }
+  });
 
   // === New Conversation ===
   newConvButton.addEventListener('click', newConversation);

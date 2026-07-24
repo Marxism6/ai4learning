@@ -243,3 +243,47 @@ async def test_progress_username_isolation(client):
     resp_alice = await client.get("/api/progress/alice")
     alice_data = resp_alice.json()
     assert alice_data["blocks"]["newton-method"]["status"] == "mastered"
+
+
+# === Upload (Ticket 06) ===
+
+@pytest.mark.anyio
+async def test_upload_no_file(client):
+    """POST /api/upload without file returns 422."""
+    response = await client.post("/api/upload", data={"username": "test"})
+    assert response.status_code == 422
+
+
+@pytest.mark.anyio
+async def test_upload_unsupported_format(client):
+    """POST /api/upload with unsupported format returns 400."""
+    response = await client.post(
+        "/api/upload",
+        files={"file": ("test.txt", b"not an image", "text/plain")},
+        data={"username": "test"},
+    )
+    assert response.status_code == 400
+
+
+@pytest.mark.anyio
+async def test_upload_file_too_large(client):
+    """POST /api/upload with too-large file returns 400."""
+    big_data = b"x" * (10 * 1024 * 1024 + 1)
+    response = await client.post(
+        "/api/upload",
+        files={"file": ("test.png", big_data, "image/png")},
+        data={"username": "test"},
+    )
+    assert response.status_code == 400
+
+
+@pytest.mark.anyio
+async def test_upload_valid_request(client):
+    """POST /api/upload with valid image (no LLM key → 502)."""
+    response = await client.post(
+        "/api/upload",
+        files={"file": ("test.png", b"fake-png-data", "image/png")},
+        data={"username": "test", "block_slug": "newton-method"},
+    )
+    # Without LLM key, this returns 502
+    assert response.status_code in (200, 502)

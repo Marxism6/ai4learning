@@ -2,7 +2,8 @@
  * Numerical Analysis Tutor — Chat Application Logic
  *
  * Handles:
- * - Sending messages to the API
+ * - Fetching and rendering knowledge block nav tabs
+ * - Sending messages to the API with block context
  * - Rendering messages with KaTeX formula support
  * - Mode toggle (eye-protection / standard)
  * - Auto-scroll
@@ -17,6 +18,8 @@
     history: [],
     isLoading: false,
     theme: 'eye-protection',
+    blockSlug: null,       // currently selected block slug (null = general chat)
+    blocks: null,          // block data from /api/blocks
   };
 
   // === DOM References ===
@@ -24,6 +27,7 @@
   const inputField = document.getElementById('inputField');
   const sendButton = document.getElementById('sendButton');
   const modeToggle = document.getElementById('modeToggle');
+  const navTabs = document.getElementById('navTabs');
   const scrollAnchor = document.getElementById('scrollAnchor');
 
   // === Helpers ===
@@ -42,34 +46,7 @@
     }
   }
 
-  /** OpenAI-compatible streaming is not used in this iteration. */
-
   // === LaTeX Parsing ===
-
-  /**
-   * Extract display math ($$...$$) from text and return an array of segments.
-   * Each segment is { type: 'text'|'display-math', content: string }.
-   */
-  function parseDisplayMath(text) {
-    const segments = [];
-    const regex = /\$\$([\s\S]*?)\$\$/g;
-    let lastIndex = 0;
-    let match;
-
-    while ((match = regex.exec(text)) !== null) {
-      if (match.index > lastIndex) {
-        segments.push({ type: 'text', content: text.slice(lastIndex, match.index) });
-      }
-      segments.push({ type: 'display-math', content: match[1].trim() });
-      lastIndex = regex.lastIndex;
-    }
-
-    if (lastIndex < text.length) {
-      segments.push({ type: 'text', content: text.slice(lastIndex) });
-    }
-
-    return segments.length > 0 ? segments : [{ type: 'text', content: text }];
-  }
 
   /**
    * Try to render LaTeX with KaTeX; returns HTML string or null on failure.
@@ -93,7 +70,6 @@
   function renderInlineMath(text) {
     if (!text.trim()) return '';
 
-    // Split by inline math $...$ (but not $$...$$ which are already handled)
     const parts = [];
     const regex = /(?<!\$)\$(?!\$)([^$]+?)(?<!\$)\$(?!\$)/g;
     let lastIndex = 0;
@@ -286,6 +262,108 @@
     scrollToBottom();
   }
 
+  /**
+   * Add a block-context hint message showing which block is active.
+   */
+  function addBlockContextMessage(block) {
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'message agent-message';
+    msgDiv.dataset.message = 'context';
+
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content';
+
+    contentDiv.innerHTML = `
+      <div class="knowledge-tag" style="margin-bottom: 8px;">${escapeHtml(block.title.toUpperCase())}</div>
+      <p><strong>${escapeHtml(block.title)}</strong> — ${escapeHtml(block.description)}</p>
+      <p style="font-size: 15px; color: var(--ink-mute); margin-top: 8px;">
+        I'll guide you through this topic. What would you like to explore?
+      </p>`;
+
+    msgDiv.appendChild(contentDiv);
+    conversation.appendChild(msgDiv);
+    scrollToBottom();
+  }
+
+  /**
+   * Clear context hint messages from the conversation.
+   */
+  function removeContextMessages() {
+    const msgs = conversation.querySelectorAll('[data-message="context"]');
+    msgs.forEach(function (el) { el.remove(); });
+  }
+
+  // === Nav Tabs ===
+
+  /**
+   * Fetch knowledge blocks from the API and render nav tabs.
+   */
+  async function loadBlocks() {
+    try {
+      const response = await fetch('/api/blocks');
+      if (!response.ok) throw new Error('Failed to load blocks');
+      state.blocks = await response.json();
+      renderTabs();
+    } catch (err) {
+      console.error('Failed to load knowledge blocks:', err);
+    }
+  }
+
+  /**
+   * Render block tabs in the nav bar.
+   */
+  function renderTabs() {
+    if (!state.blocks) return;
+
+    // Remove all existing tabs except the first "CHAT" tab
+    while (navTabs.children.length > 1) {
+      navTabs.removeChild(navTabs.lastChild);
+    }
+
+    // Sort blocks by topic then title for logical grouping
+    const sorted = Object.values(state.blocks).sort(function (a, b) {
+      if (a.topic !== b.topic) return a.topic.localeCompare(b.topic);
+      return a.title.localeCompare(b.title);
+    });
+
+    sorted.forEach(function (block) {
+      const tab = document.createElement('button');
+      tab.className = 'nav-tab';
+      tab.dataset.block = block.slug;
+      tab.textContent = block.title.toUpperCase();
+      tab.addEventListener('click', function () { selectBlock(block.slug); });
+      navTabs.appendChild(tab);
+    });
+  }
+
+  /**
+   * Select a knowledge block: update UI and state.
+   * Pass slug = null or "" to select "general chat".
+   */
+  function selectBlock(slug) {
+    // Update state
+    state.blockSlug = slug || null;
+
+    // Update active tab
+    const tabs = navTabs.querySelectorAll('.nav-tab');
+    tabs.forEach(function (tab) {
+      const isActive = tab.dataset.block === (slug || '');
+      tab.classList.toggle('nav-tab-active', isActive);
+      tab.setAttribute('data-active', isActive ? 'true' : 'false');
+    });
+
+    // Remove old context messages and add block context
+    removeContextMessages();
+    if (slug && state.blocks && state.blocks[slug]) {
+      addBlockContextMessage(state.blocks[slug]);
+    }
+
+    // Reset conversation history for the new block
+    state.history = [];
+
+    inputField.focus();
+  }
+
   // === API Calls ===
 
   async function sendMessage(message) {
@@ -309,14 +387,14 @@
         body: JSON.stringify({
           username: state.username,
           message: message,
-          block_slug: null,
+          block_slug: state.blockSlug,
           history: state.history.slice(0, -1), // history without the new message
         }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Server error: ${response.status}`);
+        const errorData = await response.json().catch(function () { return {}; });
+        throw new Error(errorData.detail || 'Server error: ' + response.status);
       }
 
       const data = await response.json();
@@ -333,7 +411,7 @@
       state.history.push({ role: 'assistant', content: reply });
     } catch (err) {
       setTypingIndicator(false);
-      addErrorMessage(`Error: ${err.message}`);
+      addErrorMessage('Error: ' + err.message);
     } finally {
       state.isLoading = false;
       inputField.disabled = false;
@@ -395,6 +473,9 @@
       }
     }
   } catch (_) { /* ignore */ }
+
+  // Load knowledge blocks
+  loadBlocks();
 
   // Focus input on load
   inputField.focus();

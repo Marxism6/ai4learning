@@ -3,7 +3,8 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from app.prompts import SOCRATIC_SYSTEM_PROMPT, DEFAULT_BLOCK_PROMPT, BLOCK_PROMPTS
+from app.prompts import SOCRATIC_SYSTEM_PROMPT, DEFAULT_BLOCK_PROMPT
+from app.blocks import BLOCKS, get_block_context
 from app.llm import chat_completion
 
 router = APIRouter()
@@ -21,18 +22,33 @@ class ChatResponse(BaseModel):
     block_slug: str | None = None
 
 
+@router.get("/blocks")
+async def list_blocks():
+    """List all knowledge blocks with metadata.
+
+    Returns a dictionary of blocks keyed by slug.
+    Each block contains slug, title, topic, description, prerequisites,
+    and mastery_levels.
+    """
+    return BLOCKS
+
+
 @router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     """Send a message to the Socratic tutor and receive a response.
 
     Uses the LLM proxy to generate a Socratic-guided response.
+    If block_slug is provided, the system prompt incorporates block-specific
+    context (topic, mastery goals, prerequisites) for focused tutoring.
     """
     if not request.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty")
 
     # Build system prompt: base Socratic prompt + block-specific context
-    block_prompt = BLOCK_PROMPTS.get(request.block_slug or "", DEFAULT_BLOCK_PROMPT)
-    system_prompt = f"{SOCRATIC_SYSTEM_PROMPT}\n\n## Context\n{block_prompt}"
+    block_context = get_block_context(request.block_slug)
+    default_context = "The student is working on a general Numerical Analysis topic."
+    context = block_context or DEFAULT_BLOCK_PROMPT
+    system_prompt = f"{SOCRATIC_SYSTEM_PROMPT}\n\n## Current Context\n{context}"
 
     # Build conversation history
     messages = list(request.history)

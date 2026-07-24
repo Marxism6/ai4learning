@@ -98,15 +98,61 @@ The frontend renders this with Chart.js using the design system teal accent colo
 Use charts sparingly — only when a visual would genuinely aid understanding
 (e.g., Newton convergence, interpolation error decay, Runge's phenomenon)."""
 
-# Default block system prompt — used when no specific block is selected
+# === Language Instructions ===
+
+LANGUAGE_INSTRUCTION_ZH = """
+
+## Language Rules (CRITICAL)
+
+You MUST respond in **Chinese (中文)**. Follow these rules strictly:
+
+1. All explanations, questions, hints, and feedback in Chinese.
+2. Technical terms use the format: 中文术语（English Term）. Examples:
+   - 牛顿法（Newton's Method）
+   - 收敛阶（Order of Convergence）
+   - 高斯消元（Gaussian Elimination）
+   - 截断误差（Truncation Error）
+   - 龙格现象（Runge's Phenomenon）
+3. First mention of a term in a conversation uses full format 中文（English）; subsequent mentions can use Chinese only.
+4. Mathematical formulas remain in LaTeX ($$...$$ and $...$) — never translate formula symbols.
+5. Algorithm names in code/pseudocode remain in English.
+6. The ::: problem block title uses format: **中文名称（ENGLISH NAME）** | Level N: 中文描述
+7. Be natural and encouraging in Chinese — don't sound like a translation.
+"""
+
+LANGUAGE_INSTRUCTION_EN = """
+
+## Language Rules
+
+Respond in English. Use standard mathematical terminology."""
+
+# Default block system prompts
+
 DEFAULT_BLOCK_PROMPT = """The student is studying Numerical Analysis. If they haven't specified a topic, ask what they'd like to work on today. Offer topics like: interpolation, Newton's method, Gaussian elimination, LU decomposition, numerical integration, Runge-Kutta methods, etc."""
 
+DEFAULT_BLOCK_PROMPT_ZH = """学生正在学习数值分析（计算方法）。如果学生没有指定主题，询问他们今天想学什么。提供选项如：插值法（Interpolation）、牛顿法（Newton's Method）、高斯消元（Gaussian Elimination）、LU 分解（LU Decomposition）、数值积分（Numerical Integration）、龙格-库塔方法（Runge-Kutta Methods）等。"""
 
-def get_system_prompt(block_context: str = "") -> str:
-    """Build the full system prompt with optional block context."""
+
+def get_system_prompt(block_context: str = "", lang: str = "zh") -> str:
+    """Build the full system prompt with language instruction and optional block context.
+
+    Args:
+        block_context: Context string for the current knowledge block.
+        lang: "zh" for Chinese, "en" for English. Defaults to "zh".
+
+    Returns:
+        The assembled system prompt string.
+    """
     prompt = SOCRATIC_SYSTEM_PROMPT
+    if lang == "zh":
+        prompt += LANGUAGE_INSTRUCTION_ZH
+    else:
+        prompt += LANGUAGE_INSTRUCTION_EN
+
     if block_context:
         prompt += f"\n\n## Current Knowledge Block Context\n{block_context}"
     else:
-        prompt += f"\n\n## Current Knowledge Block Context\n{DEFAULT_BLOCK_PROMPT}"
+        default = DEFAULT_BLOCK_PROMPT_ZH if lang == "zh" else DEFAULT_BLOCK_PROMPT
+        prompt += f"\n\n## Current Knowledge Block Context\n{default}"
+
     return prompt

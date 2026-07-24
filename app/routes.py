@@ -23,6 +23,7 @@ class ChatRequest(BaseModel):
     block_slug: str | None = None
     history: list[dict[str, str]] = []
     memory_summary: str | None = None
+    lang: str = "zh"
 
 
 class ChatResponse(BaseModel):
@@ -64,9 +65,9 @@ async def chat(request: ChatRequest, llm: LLMClient = Depends(get_llm_client)):
     if not request.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty")
 
-    # Build system prompt: base Socratic prompt + block-specific context
-    block_context = get_block_context(request.block_slug or "")
-    system_prompt = get_system_prompt(block_context)
+    # Build system prompt: base Socratic prompt + block-specific context + language
+    block_context = get_block_context(request.block_slug or "", lang=request.lang)
+    system_prompt = get_system_prompt(block_context, lang=request.lang)
 
     # Add cross-session memory summary ONLY at conversation start (empty history)
     if request.memory_summary and not request.history:
@@ -113,12 +114,23 @@ Your task:
 Wrap display math in $$...$$ and inline math in $...$.
 Do NOT give the answer directly — begin with a Socratic question."""
 
+VISION_PROMPT_ZH = """你是一位数值分析的苏格拉底式辅导老师。学生上传了一张题目截图。
+
+你的任务：
+1. 识别并转录题目文字，数学公式用 LaTeX 格式输出。
+2. 开始苏格拉底式引导：针对题目提出一个引导性问题，而不是直接解答。
+3. 如果图片包含多道题目，聚焦最突出的一道，并提及还有其他题目。
+
+术语格式：中文（English）。公式用 $$...$$ 和 $...$ 包裹。
+不要直接给出答案——以苏格拉底式提问开始。"""
+
 
 @router.post("/upload")
 async def upload_image(
     file: UploadFile = File(...),
     username: str = Form(...),
     block_slug: str | None = Form(None),
+    lang: str = Form("zh"),
     llm: LLMClient = Depends(get_llm_client),
 ):
     """Upload an image for problem recognition.
@@ -127,6 +139,7 @@ async def upload_image(
     The image is NOT stored on disk after processing.
 
     Supported formats: PNG, JPG, WEBP. Max size: 10MB.
+    lang: "zh" or "en" — selects the appropriate vision prompt.
     """
     # Validate MIME type
     if file.content_type not in ALLOWED_MIME_TYPES:
@@ -160,10 +173,13 @@ async def upload_image(
         chunks.append(chunk)
     image_data = b"".join(chunks)
 
+    # Select prompt based on language
+    vision_prompt = VISION_PROMPT_ZH if lang == "zh" else VISION_PROMPT
+
     # Send to vision LLM
     try:
         recognized = await llm.vision(
-            system_prompt=VISION_PROMPT,
+            system_prompt=vision_prompt,
             image_data=image_data,
             image_mime=file.content_type,
         )

@@ -18,6 +18,11 @@
 (function () {
   'use strict';
 
+  // Shared marker regex for :::mastered::: — single source of truth
+  // Use _G variant for global replacements (strip), non-G for .test() (detect)
+  var MASTERED_MARKER_RE = /:::\s*mastered\s*:::/i;
+  var MASTERED_MARKER_RE_G = /:::\s*mastered\s*:::/gi;
+
   // === State ===
   const state = {
     username: null,
@@ -28,6 +33,7 @@
     blocks: null,
     progress: null,
     memoryEnabled: false,   // cross-session memory toggle
+    memoryInjected: false,  // true after first memory summary sent in this session
   };
 
   // === DOM References ===
@@ -149,6 +155,7 @@
   function newConversation() {
     state.history = [];
     state.blockSlug = null;
+    state.memoryInjected = false;
     updateActiveTab('');
     saveSession();
     lsRemove('session-' + state.username);
@@ -241,7 +248,7 @@
 
   function markdownToHtml(markdown) {
     // Strip mastery confirmation markers before other parsing
-    markdown = markdown.replace(/:::\s*mastered\s*:::/gi, '');
+    markdown = markdown.replace(MASTERED_MARKER_RE_G, '');
 
     const displayMathBlocks = [];
     let processed = markdown.replace(/\$\$([\s\S]*?)\$\$/g, function (_, math) {
@@ -632,10 +639,11 @@
     scrollToBottom();
     setTypingIndicator(true);
 
-    // Build memory summary if enabled
+    // Build memory summary if enabled and not yet injected this session
     var memorySummary = '';
-    if (state.memoryEnabled) {
+    if (state.memoryEnabled && !state.memoryInjected) {
       memorySummary = buildMemorySummary();
+      if (memorySummary) state.memoryInjected = true;
     }
 
     try {
@@ -684,7 +692,7 @@
         }
 
         // Detect :::mastered::: marker in agent reply → mark mastered
-        if (reply.indexOf(':::mastered:::') !== -1) {
+        if (MASTERED_MARKER_RE.test(reply)) {
           writeProgress(state.blockSlug, 'mastered', 3);
         }
       }

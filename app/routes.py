@@ -1,6 +1,6 @@
 """API routes for the Socratic Numerical Analysis Tutor."""
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 from typing import Literal
 
@@ -10,6 +10,11 @@ from app.progress import get_progress, get_completed_count, update_block_progres
 from app.llm import LLMClient
 
 router = APIRouter()
+
+
+def get_llm_client() -> LLMClient:
+    """FastAPI dependency: provides an LLMClient instance."""
+    return LLMClient()
 
 
 class ChatRequest(BaseModel):
@@ -49,7 +54,7 @@ async def list_blocks():
 # === Chat ===
 
 @router.post("/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest):
+async def chat(request: ChatRequest, llm: LLMClient = Depends(get_llm_client)):
     """Send a message to the Socratic tutor and receive a response.
 
     Uses the LLM proxy to generate a Socratic-guided response.
@@ -79,7 +84,6 @@ async def chat(request: ChatRequest):
     messages.append({"role": "user", "content": request.message})
 
     try:
-        llm = LLMClient()
         reply = await llm.chat(
             system_prompt=system_prompt,
             messages=messages,
@@ -115,6 +119,7 @@ async def upload_image(
     file: UploadFile = File(...),
     username: str = Form(...),
     block_slug: str | None = Form(None),
+    llm: LLMClient = Depends(get_llm_client),
 ):
     """Upload an image for problem recognition.
 
@@ -139,20 +144,24 @@ async def upload_image(
                    f"Maximum size: 10 MB.",
         )
 
-    # Read file
-    image_data = await file.read()
-
-    # Validate size after read (defensive, for chunked transfers)
-    if len(image_data) > MAX_UPLOAD_SIZE:
-        raise HTTPException(
-            status_code=400,
-            detail=f"File too large ({len(image_data) / 1024 / 1024:.1f} MB). "
-                   f"Maximum size: 10 MB.",
-        )
+    # Read in 1MB chunks, reject early if exceeds limit (handles chunked transfers)
+    chunks: list[bytes] = []
+    total_size = 0
+    while True:
+        chunk = await file.read(1024 * 1024)
+        if not chunk:
+            break
+        total_size += len(chunk)
+        if total_size > MAX_UPLOAD_SIZE:
+            raise HTTPException(
+                status_code=400,
+                detail="File too large. Maximum size: 10 MB.",
+            )
+        chunks.append(chunk)
+    image_data = b"".join(chunks)
 
     # Send to vision LLM
     try:
-        llm = LLMClient()
         recognized = await llm.vision(
             system_prompt=VISION_PROMPT,
             image_data=image_data,

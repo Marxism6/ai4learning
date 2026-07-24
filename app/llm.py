@@ -19,22 +19,39 @@ DEFAULT_API_BASE = "https://api.openai.com/v1"
 class LLMClient:
     """Client for OpenAI-compatible LLM APIs.
 
-    Reads configuration from environment variables once at construction.
+    Reads configuration from environment variables.
+    API key validated lazily — on first actual API call — so that
+    tests can construct an LLMClient via Depends without credentials.
     """
 
     def __init__(self):
-        self.api_key = os.environ.get("LLM_API_KEY") or os.environ.get("OPENAI_API_KEY")
-        if not self.api_key:
-            raise RuntimeError(
-                "LLM_API_KEY environment variable is not set. "
-                "Set it to your OpenAI-compatible API key."
-            )
-        self.api_base = (os.environ.get("LLM_API_BASE", DEFAULT_API_BASE).rstrip("/"))
+        self._api_key: str | None = None
+        self._headers: dict | None = None
+        self.api_base = os.environ.get("LLM_API_BASE", DEFAULT_API_BASE).rstrip("/")
         self.model = os.environ.get("LLM_MODEL", DEFAULT_MODEL)
-        self.headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-        }
+
+    @property
+    def api_key(self) -> str:
+        """Resolve and validate the API key (lazy)."""
+        if self._api_key is None:
+            key = os.environ.get("LLM_API_KEY") or os.environ.get("OPENAI_API_KEY")
+            if not key:
+                raise RuntimeError(
+                    "LLM_API_KEY environment variable is not set. "
+                    "Set it to your OpenAI-compatible API key."
+                )
+            self._api_key = key
+        return self._api_key
+
+    @property
+    def headers(self) -> dict:
+        """Build auth headers (lazy)."""
+        if self._headers is None:
+            self._headers = {
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            }
+        return self._headers
 
     @property
     def _url(self) -> str:

@@ -63,8 +63,8 @@ async def chat(request: ChatRequest):
     block_context = get_block_context(request.block_slug or "")
     system_prompt = get_system_prompt(block_context)
 
-    # Add cross-session memory summary if provided
-    if request.memory_summary:
+    # Add cross-session memory summary ONLY at conversation start (empty history)
+    if request.memory_summary and not request.history:
         system_prompt += (
             "\n\n## Cross-Session Memory\n"
             "The student has previously mastered these blocks:\n"

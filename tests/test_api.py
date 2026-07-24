@@ -86,7 +86,7 @@ async def test_blocks_endpoint(client):
 
 @pytest.mark.anyio
 async def test_blocks_have_required_fields(client):
-    """Each block has slug, title, topic, description, prerequisites, mastery_levels."""
+    """Each block has slug, title, topic, description, mastery_levels."""
     response = await client.get("/api/blocks")
     data = response.json()
     for slug, block in data.items():
@@ -94,11 +94,11 @@ async def test_blocks_have_required_fields(client):
         assert "title" in block
         assert "topic" in block
         assert "description" in block
-        assert "prerequisites" in block
-        assert isinstance(block["prerequisites"], list)
         assert "mastery_levels" in block
         assert isinstance(block["mastery_levels"], list)
         assert len(block["mastery_levels"]) == 3
+        # Per spec: no hardcoded prerequisites — LLM determines dynamically
+        assert "prerequisites" not in block, "prerequisites field must be removed per spec"
 
 
 @pytest.mark.anyio

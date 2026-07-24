@@ -38,8 +38,10 @@ async def list_blocks():
     """List all knowledge blocks with metadata.
 
     Returns a dictionary of blocks keyed by slug.
-    Each block contains slug, title, topic, description, prerequisites,
+    Each block contains slug, title, topic, description,
     and mastery_levels.
+    Note: prerequisite info is not included — the LLM determines
+    prerequisites dynamically at runtime per spec.
     """
     return BLOCKS
 

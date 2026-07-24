@@ -158,10 +158,6 @@
       }
     });
 
-    // Remove prerequisite chips
-    var chips = document.getElementById('prerequisiteChips');
-    if (chips) chips.remove();
-
     // Show welcome if hidden
     var welcome = conversation.querySelector('[data-message="welcome"]');
     if (welcome) {
@@ -345,62 +341,11 @@
     var total = state.progress.total_blocks;
     progressIndicator.textContent = completed + '/' + total + ' completed';
     progressIndicator.style.display = '';
-
-    if (state.blockSlug && state.blocks && state.blocks[state.blockSlug]) {
-      renderPrerequisiteChips(state.blockSlug);
-    }
   }
 
-  function renderPrerequisiteChips(slug) {
-    if (!state.blocks || !state.blocks[slug]) return;
-
-    var block = state.blocks[slug];
-    var prereqs = block.prerequisites || [];
-
-    if (!prereqs.length) return;
-
-    var oldSection = document.getElementById('prerequisiteChips');
-    if (oldSection) oldSection.remove();
-
-    var container = document.createElement('div');
-    container.id = 'prerequisiteChips';
-
-    var label = document.createElement('div');
-    label.className = 'body-sm';
-    label.style.cssText = 'color: var(--ink-mute); margin-bottom: 8px;';
-    label.textContent = 'Prerequisites:';
-    container.appendChild(label);
-
-    var chipsDiv = document.createElement('div');
-    chipsDiv.className = 'prerequisite-chips';
-
-    prereqs.forEach(function (prereqSlug) {
-      var chip = document.createElement('span');
-      chip.className = 'prerequisite-chip';
-
-      var prereqBlock = state.blocks[prereqSlug];
-      var labelText = prereqBlock ? prereqBlock.title : prereqSlug;
-
-      if (state.progress && state.progress.blocks && state.progress.blocks[prereqSlug]) {
-        var pstatus = state.progress.blocks[prereqSlug].status;
-        if (pstatus === 'mastered') {
-          chip.classList.add('prerequisite-chip-done');
-        }
-      }
-
-      chip.textContent = labelText.toUpperCase();
-      chipsDiv.appendChild(chip);
-    });
-
-    container.appendChild(chipsDiv);
-
-    var welcomeMsg = conversation.querySelector('[data-message="welcome"]');
-    if (welcomeMsg) {
-      welcomeMsg.parentNode.insertBefore(container, welcomeMsg.nextSibling);
-    } else {
-      conversation.insertBefore(container, conversation.firstChild);
-    }
-  }
+  /**
+   * *Prerequisite chips removed per spec — LLM determines prerequisites dynamically.*
+   */
 
   // === Message Rendering ===
 
@@ -545,14 +490,11 @@
     state.blockSlug = slug || null;
     updateActiveTab(slug);
 
-    // Remove old context messages and chips
+    // Remove old context messages
     removeContextMessages();
-    var oldChips = document.getElementById('prerequisiteChips');
-    if (oldChips) oldChips.remove();
 
     if (slug && state.blocks && state.blocks[slug]) {
       addBlockContextMessage(state.blocks[slug]);
-      renderPrerequisiteChips(slug);
     }
 
     state.history = [];

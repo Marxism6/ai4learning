@@ -104,6 +104,14 @@
       return `\x00MATHBLOCK${idx}\x00`;
     });
 
+    // Extract ::: problem blocks before processing markdown
+    const problemBlocks = [];
+    processed = processed.replace(/::: problem\s*\n([\s\S]*?):::/g, function (_, content) {
+      const idx = problemBlocks.length;
+      problemBlocks.push(content.trim());
+      return `\x00PROBLEM${idx}\x00`;
+    });
+
     // Process markdown line by line
     const lines = processed.split('\n');
     const htmlLines = [];
@@ -170,6 +178,40 @@
       const math = displayMathBlocks[parseInt(idx)];
       const rendered = tryRenderLatex(math, true);
       return `<div class="formula-card">${rendered || escapeHtml('$$' + math + '$$')}</div>`;
+    });
+
+    // Render problem blocks as styled problem cards
+    html = html.replace(/\x00PROBLEM(\d+)\x00/g, function (_, idx) {
+      const content = problemBlocks[parseInt(idx)];
+      // Parse the problem: first line is "**TOPIC** | Level N: description"
+      const lines = content.split('\n');
+      const headerLine = lines[0].trim();
+      const bodyLines = lines.slice(1).filter(function (l) { return l.trim(); });
+
+      // Extract tag: usually **BOLD TEXT** | ...
+      var tag = '';
+      var bodyHtml = '';
+
+      var headerMatch = headerLine.match(/^\*\*(.+?)\*\*/);
+      if (headerMatch) {
+        tag = headerMatch[1];
+      }
+
+      // Render body with inline math
+      bodyHtml = bodyLines.map(function (l) {
+        return '<p>' + renderInlineMath(l) + '</p>';
+      }).join('\n');
+
+      // Also render the header with inline math
+      var headerHtml = renderInlineMath(headerLine);
+
+      return '<div class="problem-card" data-problem="">' +
+        (tag ? '<div class="problem-tag">' + escapeHtml(tag) + '</div>' : '') +
+        '<div class="problem-body">' +
+        (tag ? '' : '<p>' + headerHtml + '</p>') +
+        bodyHtml +
+        '</div>' +
+        '</div>';
     });
 
     return html;

@@ -3,7 +3,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from app.prompts import SOCRATIC_SYSTEM_PROMPT, DEFAULT_BLOCK_PROMPT
+from app.prompts import get_system_prompt
 from app.blocks import BLOCKS, get_block_context
 from app.llm import chat_completion
 
@@ -45,10 +45,8 @@ async def chat(request: ChatRequest):
         raise HTTPException(status_code=400, detail="Message cannot be empty")
 
     # Build system prompt: base Socratic prompt + block-specific context
-    block_context = get_block_context(request.block_slug)
-    default_context = "The student is working on a general Numerical Analysis topic."
-    context = block_context or DEFAULT_BLOCK_PROMPT
-    system_prompt = f"{SOCRATIC_SYSTEM_PROMPT}\n\n## Current Context\n{context}"
+    block_context = get_block_context(request.block_slug or "")
+    system_prompt = get_system_prompt(block_context)
 
     # Build conversation history
     messages = list(request.history)

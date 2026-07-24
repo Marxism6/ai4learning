@@ -620,9 +620,71 @@
     saveSession();
     inputField.focus();
 
-    // Active training mode: auto-send a prompt so the agent proactively quizzes
+    // Active training mode: directly call API, no fake user bubble
     if (slug) {
-      sendMessage("I'm ready to study " + slug + ". Please assess my current understanding and start teaching.");
+      startBlockAssessment(slug);
+    }
+  }
+
+  /**
+   * Start block assessment without adding a user message bubble.
+   * Sends a synthetic system-style prompt — not visible to the student.
+   */
+  async function startBlockAssessment(slug) {
+    if (state.isLoading) return;
+    state.isLoading = true;
+    inputField.disabled = true;
+    sendButton.disabled = true;
+    setTypingIndicator(true);
+
+    var memorySummary = '';
+    if (state.memoryEnabled && !state.memoryInjected) {
+      memorySummary = buildMemorySummary();
+      if (memorySummary) state.memoryInjected = true;
+    }
+
+    try {
+      var res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: state.username,
+          message: '[SYSTEM] Student selected block: ' + slug + '. Begin proactive assessment.',
+          block_slug: slug,
+          history: [],
+          memory_summary: memorySummary,
+        }),
+      });
+
+      setTypingIndicator(false);
+
+      if (!res.ok) {
+        var errData = await res.json().catch(function () { return {}; });
+        throw new Error(errData.detail || 'Assessment failed: ' + res.status);
+      }
+
+      var data = await res.json();
+      var reply = data.reply;
+
+      // Do NOT add a user message — only agent response
+      var html = markdownToHtml(reply);
+      addAgentMessage(html);
+      state.history.push({ role: 'assistant', content: reply });
+      saveSession();
+      initCharts();
+
+      // Detect mastery marker
+      if (state.blockSlug && MASTERED_MARKER_RE.test(reply)) {
+        writeProgress(state.blockSlug, 'mastered', 3);
+      }
+    } catch (err) {
+      setTypingIndicator(false);
+      addErrorMessage('Error: ' + err.message);
+    } finally {
+      state.isLoading = false;
+      inputField.disabled = false;
+      sendButton.disabled = false;
+      scrollToBottom();
     }
   }
 

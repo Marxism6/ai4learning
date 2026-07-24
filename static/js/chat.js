@@ -137,6 +137,9 @@
       updateActiveTab(state.blockSlug);
     }
 
+    // Initialize any chart canvases after restore
+    setTimeout(initCharts, 50);
+
     return true;
   }
 
@@ -233,6 +236,9 @@
     return parts.join('');
   }
 
+  // Chart counter for unique canvas IDs
+  var chartCounter = 0;
+
   function markdownToHtml(markdown) {
     // Strip mastery confirmation markers before other parsing
     markdown = markdown.replace(/:::\s*mastered\s*:::/gi, '');
@@ -249,6 +255,14 @@
       const idx = problemBlocks.length;
       problemBlocks.push(content.trim());
       return `\x00PROBLEM${idx}\x00`;
+    });
+
+    // Extract :::chart{...}::: blocks before markdown processing
+    const chartBlocks = [];
+    processed = processed.replace(/:::chart\{(.+?)\}:::/g, function (_, jsonStr) {
+      const idx = chartBlocks.length;
+      chartBlocks.push(jsonStr);
+      return `\x00CHART${idx}\x00`;
     });
 
     const lines = processed.split('\n');
@@ -319,6 +333,16 @@
         '</div>';
     });
 
+    html = html.replace(/\x00CHART(\d+)\x00/g, function (_, idx) {
+      var chartId = 'chart-' + (++chartCounter);
+      var jsonStr = chartBlocks[parseInt(idx)];
+      // Escape JSON for data attribute
+      var escaped = escapeHtml(jsonStr);
+      return '<div class="formula-card chart-card" data-chart="' + escaped + '" id="' + chartId + '">' +
+        '<canvas></canvas>' +
+        '</div>';
+    });
+
     return html;
   }
 
@@ -344,6 +368,66 @@
     var total = state.progress.total_blocks;
     progressIndicator.textContent = completed + '/' + total + ' completed';
     progressIndicator.style.display = '';
+  }
+
+  // === Chart Rendering ===
+
+  /**
+   * Find all chart cards in the conversation and initialize Chart.js canvases.
+   * Called after new messages are rendered.
+   */
+  function initCharts() {
+    var cards = conversation.querySelectorAll('.chart-card');
+    cards.forEach(function (card) {
+      // Skip already-initialized charts
+      if (card.dataset.chartInitialized) return;
+      card.dataset.chartInitialized = '1';
+
+      var jsonStr = card.dataset.chart;
+      if (!jsonStr) return;
+
+      try {
+        var config = JSON.parse(jsonStr);
+        var canvas = card.querySelector('canvas');
+        if (!canvas) return;
+
+        // Build Chart.js config with design system colors
+        var accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#1a5c5c';
+        var inkMute = getComputedStyle(document.documentElement).getPropertyValue('--ink-mute').trim() || '#6b6560';
+
+        // Default dataset styling
+        if (config.data && config.data.datasets) {
+          config.data.datasets.forEach(function (ds, i) {
+            if (!ds.borderColor) ds.borderColor = accent;
+            if (!ds.backgroundColor) ds.backgroundColor = accent + '33'; // 20% opacity
+            if (!ds.pointBackgroundColor) ds.pointBackgroundColor = accent;
+            if (!ds.pointBorderColor) ds.pointBorderColor = '#fff';
+            if (ds.tension == null) ds.tension = 0.3;
+          });
+        }
+
+        // Default options
+        if (!config.options) config.options = {};
+        if (!config.options.plugins) config.options.plugins = {};
+
+        // Add responsive defaults
+        config.options.responsive = true;
+        config.options.maintainAspectRatio = true;
+
+        // Apply design system colors to scales
+        if (!config.options.scales) {
+          config.options.scales = {
+            x: { grid: { color: inkMute + '22' }, ticks: { color: inkMute } },
+            y: { grid: { color: inkMute + '22' }, ticks: { color: inkMute } },
+          };
+        }
+
+        new Chart(canvas, config);
+      } catch (e) {
+        console.error('Chart init error:', e);
+        card.innerHTML = '<p class="error-message" style="padding: 12px;">Chart rendering error</p>';
+      }
+    });
   }
 
   /**
@@ -588,6 +672,9 @@
 
       // Save session after each exchange
       saveSession();
+
+      // Initialize any charts in the new message
+      initCharts();
 
       // Detect mastery confirmation and write progress
       if (state.blockSlug) {

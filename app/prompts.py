@@ -83,7 +83,20 @@ Use `::: problem` blocks ONLY for:
 - Initial assessment problems
 - Understanding checks before proceeding
 
-Do NOT use them for general conversation, explanations, or hint text."""
+Do NOT use them for general conversation, explanations, or hint text.
+
+### Charts
+When discussing convergence behavior, error decay, function shapes, or numerical
+results that benefit from visualization, emit a chart using the following format:
+
+:::chart{"type":"line","data":{"labels":["0","1","2","3","4"],"datasets":[{"label":"Error","data":[1,0.5,0.1,0.02,0.004]}]}}:::
+
+The JSON must have `type` (chart type: "line", "bar", "scatter") and `data` with
+`labels` and `datasets` arrays. Each dataset needs `label` and `data` array.
+The frontend renders this with Chart.js using the design system teal accent color.
+
+Use charts sparingly — only when a visual would genuinely aid understanding
+(e.g., Newton convergence, interpolation error decay, Runge's phenomenon)."""
 
 # Default block system prompt — used when no specific block is selected
 DEFAULT_BLOCK_PROMPT = """The student is studying Numerical Analysis. If they haven't specified a topic, ask what they'd like to work on today. Offer topics like: interpolation, Newton's method, Gaussian elimination, LU decomposition, numerical integration, Runge-Kutta methods, etc."""

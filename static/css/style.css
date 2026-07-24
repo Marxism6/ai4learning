@@ -334,6 +334,18 @@ body {
 }
 
 /* Inline KaTeX within messages */
+
+/* === Chart Card === */
+.chart-card {
+  padding: 16px;
+  max-height: 320px;
+}
+
+.chart-card canvas {
+  width: 100% !important;
+  height: auto !important;
+  max-height: 280px;
+}
 .message-content .katex {
   font-size: 0.95em;
 }

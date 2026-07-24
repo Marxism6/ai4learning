@@ -36,6 +36,25 @@ class TestBlockDefinitions:
         }
         assert expected.issubset(set(BLOCKS.keys()))
 
+    # === i18n bilingual fields (H2) ===
+
+    def test_all_blocks_have_zh_fields(self):
+        for slug, block in BLOCKS.items():
+            assert block["title_zh"], f"{slug} missing title_zh"
+            assert block["topic_zh"], f"{slug} missing topic_zh"
+            assert block["description_zh"], f"{slug} missing description_zh"
+            assert block["mastery_levels_zh"], f"{slug} missing mastery_levels_zh"
+            assert len(block["mastery_levels_zh"]) == 3
+
+    def test_zh_fields_contain_chinese(self):
+        """Sanity check: at least one block's fields contain Chinese characters."""
+        block = BLOCKS["interpolation"]
+        assert any("一" <= c <= "鿿" for c in block["title_zh"])
+        assert any("一" <= c <= "鿿" for c in block["topic_zh"])
+        assert any("一" <= c <= "鿿" for c in block["description_zh"])
+        for level in block["mastery_levels_zh"]:
+            assert any("一" <= c <= "鿿" for c in level)
+
 
 class TestGetBlock:
     """Test the get_block helper."""
@@ -72,3 +91,17 @@ class TestGetBlockContext:
 
     def test_nonexistent_slug_returns_empty(self):
         assert get_block_context("nonexistent") == ""
+
+    # === i18n context (H2) ===
+
+    def test_context_with_lang_zh(self):
+        context = get_block_context("newton-method", lang="zh")
+        assert context
+        assert "牛顿法" in context
+        assert "非线性方程" in context
+        assert "Level" in context
+
+    def test_context_lang_zh_not_empty(self):
+        context = get_block_context("interpolation", lang="zh")
+        assert context
+        assert "插值法" in context

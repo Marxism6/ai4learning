@@ -72,7 +72,7 @@ async def test_static_js_served(client):
     assert "javascript" in response.headers["content-type"]
 
 
-# === Knowledge Blocks (Ticket 02) ===
+# === Knowledge Blocks + i18n (H2, H5) ===
 
 @pytest.mark.anyio
 async def test_blocks_endpoint(client):
@@ -86,29 +86,34 @@ async def test_blocks_endpoint(client):
 
 @pytest.mark.anyio
 async def test_blocks_have_required_fields(client):
-    """Each block has slug, title, topic, description, mastery_levels."""
+    """Each block has required fields including _zh bilingual fields."""
     response = await client.get("/api/blocks")
     data = response.json()
     for slug, block in data.items():
         assert block["slug"] == slug
         assert "title" in block
+        assert "title_zh" in block, f"{slug} missing title_zh"
         assert "topic" in block
+        assert "topic_zh" in block, f"{slug} missing topic_zh"
         assert "description" in block
+        assert "description_zh" in block, f"{slug} missing description_zh"
         assert "mastery_levels" in block
         assert isinstance(block["mastery_levels"], list)
         assert len(block["mastery_levels"]) == 3
-        # Per spec: no hardcoded prerequisites — LLM determines dynamically
-        assert "prerequisites" not in block, "prerequisites field must be removed per spec"
+        assert "mastery_levels_zh" in block
+        assert len(block["mastery_levels_zh"]) == 3
+        # Per spec: no hardcoded prerequisites
+        assert "prerequisites" not in block
 
 
 @pytest.mark.anyio
 async def test_blocks_include_newton_method(client):
-    """Newton's method block is present."""
+    """Newton's method block is present with zh fields."""
     response = await client.get("/api/blocks")
     data = response.json()
     assert "newton-method" in data
     assert data["newton-method"]["title"] == "Newton's Method"
-    assert data["newton-method"]["topic"] == "Nonlinear Equations"
+    assert data["newton-method"]["title_zh"] == "牛顿法（Newton's Method）"
 
 
 @pytest.mark.anyio
@@ -119,7 +124,26 @@ async def test_blocks_include_gauss_elimination(client):
     assert "gauss-elimination" in data
 
 
-# === Chat (Ticket 01) ===
+# === Models (H7) ===
+
+@pytest.mark.anyio
+async def test_models_endpoint_without_key(client):
+    """GET /api/models without API key returns 502."""
+    response = await client.get("/api/models")
+    assert response.status_code == 502
+
+
+@pytest.mark.anyio
+async def test_models_endpoint_with_invalid_key_header(client):
+    """GET /api/models with invalid API key header returns 502."""
+    response = await client.get(
+        "/api/models",
+        headers={"X-API-Key": "sk-invalid"},
+    )
+    assert response.status_code == 502
+
+
+# === Chat (Ticket 01) + i18n (H3) ===
 
 @pytest.mark.anyio
 async def test_chat_empty_message_rejected(client):
@@ -142,8 +166,6 @@ async def test_chat_request_shape(client):
             "history": [],
         },
     )
-    # Without LLM_API_KEY, this should fail with 502
-    # The point is to verify the request is well-formed
     assert response.status_code in (200, 502)
 
 
@@ -166,13 +188,44 @@ async def test_chat_with_history(client):
 
 @pytest.mark.anyio
 async def test_chat_with_block_slug(client):
-    """POST /api/chat with block_slug is accepted (Ticket 02 integration)."""
+    """POST /api/chat with block_slug is accepted."""
     response = await client.post(
         "/api/chat",
         json={
             "username": "test",
             "message": "Tell me about Newton's method",
             "block_slug": "newton-method",
+            "history": [],
+        },
+    )
+    assert response.status_code in (200, 502)
+
+
+@pytest.mark.anyio
+async def test_chat_with_lang_zh(client):
+    """POST /api/chat with lang='zh' is accepted."""
+    response = await client.post(
+        "/api/chat",
+        json={
+            "username": "test",
+            "message": "什么是牛顿法？",
+            "lang": "zh",
+            "history": [],
+        },
+    )
+    # Without LLM key → 502; the point is the request deserializes correctly
+    assert response.status_code in (200, 502)
+
+
+@pytest.mark.anyio
+async def test_chat_with_lang_en(client):
+    """POST /api/chat with lang='en' is accepted."""
+    response = await client.post(
+        "/api/chat",
+        json={
+            "username": "test",
+            "message": "What is Newton's method?",
+            "lang": "en",
             "history": [],
         },
     )
@@ -230,22 +283,19 @@ async def test_progress_unknown_block(client):
 @pytest.mark.anyio
 async def test_progress_username_isolation(client):
     """Two users have independent progress."""
-    # Update alice's progress
     await client.post(
         "/api/progress/alice",
         json={"block_slug": "newton-method", "status": "mastered"},
     )
-    # Bob should not be affected
     resp_bob = await client.get("/api/progress/bob")
     bob_data = resp_bob.json()
     assert bob_data["blocks"]["newton-method"]["status"] == "not-started"
-    # Alice should have it mastered
     resp_alice = await client.get("/api/progress/alice")
     alice_data = resp_alice.json()
     assert alice_data["blocks"]["newton-method"]["status"] == "mastered"
 
 
-# === Upload (Ticket 06) ===
+# === Upload (Ticket 06) + i18n (H4) ===
 
 @pytest.mark.anyio
 async def test_upload_no_file(client):
@@ -285,5 +335,15 @@ async def test_upload_valid_request(client):
         files={"file": ("test.png", b"fake-png-data", "image/png")},
         data={"username": "test", "block_slug": "newton-method"},
     )
-    # Without LLM key, this returns 502
+    assert response.status_code in (200, 502)
+
+
+@pytest.mark.anyio
+async def test_upload_with_lang_zh(client):
+    """POST /api/upload with lang='zh' is accepted."""
+    response = await client.post(
+        "/api/upload",
+        files={"file": ("test.png", b"fake-png-data", "image/png")},
+        data={"username": "test", "lang": "zh"},
+    )
     assert response.status_code in (200, 502)

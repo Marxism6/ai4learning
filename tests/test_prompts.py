@@ -1,6 +1,11 @@
-"""Tests for the Socratic system prompt (Ticket 03 — Prerequisite flow & hint escalation)."""
+"""Tests for the Socratic system prompt — including i18n lang support (H3)."""
 
-from app.prompts import SOCRATIC_SYSTEM_PROMPT, get_system_prompt
+from app.prompts import (
+    SOCRATIC_SYSTEM_PROMPT,
+    LANGUAGE_INSTRUCTION_ZH,
+    LANGUAGE_INSTRUCTION_EN,
+    get_system_prompt,
+)
 
 
 class TestSocraticPromptContent:
@@ -41,8 +46,21 @@ class TestSocraticPromptContent:
         assert "no hardcoded" in SOCRATIC_SYSTEM_PROMPT.lower()
 
 
+class TestLanguageInstruction:
+    """Verify language instructions exist and contain correct directives."""
+
+    def test_lang_zh_contains_chinese_rules(self):
+        assert "Chinese (中文)" in LANGUAGE_INSTRUCTION_ZH
+        assert "中文术语（English Term）" in LANGUAGE_INSTRUCTION_ZH
+        assert "LaTeX" in LANGUAGE_INSTRUCTION_ZH
+
+    def test_lang_en_contains_english_rule(self):
+        assert "English" in LANGUAGE_INSTRUCTION_EN
+        assert "standard mathematical terminology" in LANGUAGE_INSTRUCTION_EN
+
+
 class TestGetSystemPrompt:
-    """Test the get_system_prompt helper."""
+    """Test the get_system_prompt helper with i18n."""
 
     def test_with_block_context(self):
         prompt = get_system_prompt("Test block context")
@@ -55,5 +73,22 @@ class TestGetSystemPrompt:
 
     def test_length(self):
         prompt = get_system_prompt("some context")
-        # Must be substantial enough to guide the LLM
         assert len(prompt) > 3000
+
+    def test_lang_zh_includes_chinese_instruction(self):
+        prompt = get_system_prompt(lang="zh")
+        assert "Chinese (中文)" in prompt
+
+    def test_lang_en_includes_english_instruction(self):
+        prompt = get_system_prompt(lang="en")
+        assert "English" in prompt
+        # EN must NOT contain Chinese instruction
+        assert "Chinese (中文)" not in prompt
+
+    def test_lang_zh_default_block_prompt_is_chinese(self):
+        prompt = get_system_prompt(lang="zh")
+        assert "数值分析" in prompt
+
+    def test_lang_en_default_block_prompt_is_english(self):
+        prompt = get_system_prompt(lang="en")
+        assert "Numerical Analysis" in prompt

@@ -65,7 +65,7 @@ html {
 }
 
 body {
-  font-family: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   font-weight: 460;
   font-size: 17px;
   line-height: 1.6;
@@ -126,7 +126,7 @@ body {
 }
 
 .nav-tab {
-  font-family: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   font-size: 11px;
   font-weight: 600;
   line-height: 1.0;
@@ -167,7 +167,7 @@ body {
   padding: 2px;
   border: none;
   cursor: pointer;
-  font-family: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   font-size: 13px;
   font-weight: 600;
   line-height: 1.0;
@@ -349,7 +349,7 @@ body {
 
 .problem-card .problem-tag {
   display: inline-block;
-  font-family: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   font-size: 11px;
   font-weight: 600;
   line-height: 1.0;
@@ -379,7 +379,7 @@ body {
 /* === Knowledge Tag === */
 .knowledge-tag {
   display: inline-block;
-  font-family: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   font-size: 11px;
   font-weight: 600;
   line-height: 1.0;
@@ -469,7 +469,7 @@ body {
   flex: 1;
   border: none;
   background: transparent;
-  font-family: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   font-weight: 460;
   font-size: 17px;
   line-height: 1.6;
@@ -608,7 +608,7 @@ body {
 }
 
 .username-input {
-  font-family: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   font-weight: 460;
   font-size: 17px;
   line-height: 1.6;
@@ -631,7 +631,7 @@ body {
 }
 
 .btn-primary {
-  font-family: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   font-size: 15px;
   font-weight: 600;
   line-height: 1.0;
@@ -660,7 +660,7 @@ body {
   align-items: center;
   background-color: var(--accent-soft);
   color: var(--accent);
-  font-family: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   font-size: 13px;
   font-weight: 460;
   line-height: 1.45;
@@ -672,7 +672,7 @@ body {
 
 /* === Nav User === */
 .nav-user {
-  font-family: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   font-size: 13px;
   font-weight: 460;
   line-height: 1.45;
@@ -682,7 +682,7 @@ body {
 
 /* === New Conversation Button === */
 .btn-new-conv {
-  font-family: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   font-size: 11px;
   font-weight: 600;
   line-height: 1.0;
@@ -722,7 +722,7 @@ body {
 }
 
 .memory-label {
-  font-family: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   font-size: 11px;
   font-weight: 600;
   line-height: 1.0;
@@ -760,7 +760,7 @@ body {
   display: inline-block;
   background-color: var(--canvas-inset);
   color: var(--ink-mute);
-  font-family: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   font-size: 13px;
   font-weight: 460;
   line-height: 1.45;

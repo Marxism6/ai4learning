@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd /home/xingwangtan/Code/107competition && rm -f \"DESIGN-superhuman.md\" \"DESIGN-superhuman.md:Zone.Identifier\" \"DESIGN-bmw-m.md\" \"DESIGN-bmw-m.md:Zone.Identifier\" \"DESIGN-apple.md\" \"DESIGN-apple.md:Zone.Identifier\" \"DESIGN-vercel.md\" \"DESIGN-vercel.md:Zone.Identifier\" && ls DESIGN*)"
+    ]
+  }
+}

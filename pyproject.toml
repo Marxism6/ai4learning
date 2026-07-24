@@ -1,0 +1,21 @@
+[project]
+name = "numerical-analysis-tutor"
+version = "0.1.0"
+description = "Socratic tutoring agent for university Numerical Analysis"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "httpx",
+    "python-multipart",
+]
+
+[project.scripts]
+serve = "app.main:run"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+]

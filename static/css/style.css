@@ -1,0 +1,581 @@
+/* ============================================
+   Numerical Analysis Tutor — Design System
+   Source of truth: DESIGN.md
+   ============================================ */
+
+/* === CSS Custom Properties (Eye-Protection Mode — Default) === */
+:root,
+[data-theme="eye-protection"] {
+  --canvas: #f5f0e8;
+  --canvas-elevated: #faf7f2;
+  --canvas-inset: #ede8df;
+  --ink: #3d3835;
+  --ink-mute: #6b6560;
+  --ink-faint: #9a938c;
+  --hairline: #ddd6cc;
+  --hairline-strong: #c8c0b5;
+  --accent: #1a5c5c;
+  --accent-soft: #e0efef;
+  --accent-hover: #144a4a;
+  --on-accent: #ffffff;
+  --nav-bg: #2c2825;
+  --nav-text: #f5f0e8;
+  --nav-mute: #b8b0a6;
+  --user-bubble: #e8e2d8;
+  --agent-bubble: #faf7f2;
+  --formula-bg: #fdfcfa;
+  --success: #2d7a4f;
+  --error: #b5443a;
+  --warning: #a67c2e;
+}
+
+/* === Standard Mode === */
+[data-theme="standard"] {
+  --canvas: #fafaf8;
+  --canvas-elevated: #ffffff;
+  --canvas-inset: #f2f1ee;
+  --ink: #292827;
+  --ink-mute: #73706d;
+  --ink-faint: #9a9794;
+  --hairline: #e8e4dd;
+  --hairline-strong: #d4cfc7;
+  --accent: #0e3030;
+  --accent-soft: #e4eded;
+  --accent-hover: #155555;
+  --on-accent: #ffffff;
+  --nav-bg: #1b1938;
+  --nav-text: #ffffff;
+  --nav-mute: #bcbac9;
+  --user-bubble: #f0eeea;
+  --agent-bubble: #ffffff;
+  --formula-bg: #ffffff;
+}
+
+/* === Reset & Base === */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  font-weight: 460;
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--ink);
+  background-color: var(--canvas);
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* === Reduced Motion === */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* === Nav Bar === */
+.nav-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 52px;
+  background-color: var(--nav-bg);
+  color: var(--nav-text);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 16px;
+  z-index: 100;
+}
+
+.nav-brand {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.0;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--nav-text);
+  white-space: nowrap;
+}
+
+.nav-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.nav-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.nav-tab {
+  font-family: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.0;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  background: transparent;
+  color: var(--nav-mute);
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 100ms ease;
+}
+
+.nav-tab:hover {
+  color: var(--nav-text);
+}
+
+.nav-tab-active,
+.nav-tab[data-active="true"] {
+  background-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.nav-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* === Mode Toggle === */
+.mode-toggle {
+  display: flex;
+  background-color: var(--canvas-inset);
+  border-radius: 9999px;
+  padding: 2px;
+  border: none;
+  cursor: pointer;
+  font-family: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.0;
+  letter-spacing: 0;
+  color: var(--ink-mute);
+}
+
+.mode-option {
+  padding: 6px 14px;
+  border-radius: 9999px;
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+.mode-option.active {
+  background-color: var(--accent);
+  color: var(--on-accent);
+}
+
+/* === Chat Area === */
+.chat-area {
+  flex: 1;
+  padding: 76px 0 96px 0;
+  overflow-y: auto;
+  display: flex;
+  justify-content: center;
+}
+
+.conversation {
+  width: 100%;
+  max-width: 720px;
+  padding: 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* === Messages === */
+.message {
+  display: flex;
+  flex-direction: column;
+  animation: messageIn 150ms ease-out;
+}
+
+@keyframes messageIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-content {
+  font-weight: 460;
+  font-size: 17px;
+  line-height: 1.6;
+  letter-spacing: 0;
+}
+
+.message-content p {
+  margin-bottom: 8px;
+}
+
+.message-content p:last-child {
+  margin-bottom: 0;
+}
+
+.message-content ul,
+.message-content ol {
+  margin: 8px 0;
+  padding-left: 24px;
+}
+
+.message-content li {
+  margin-bottom: 4px;
+}
+
+.message-content em {
+  font-style: italic;
+}
+
+.message-content strong {
+  font-weight: 600;
+}
+
+/* === User Message === */
+.user-message {
+  align-items: flex-end;
+}
+
+.user-message .message-content {
+  background-color: var(--user-bubble);
+  color: var(--ink);
+  border-radius: 14px;
+  padding: 14px 18px;
+  max-width: 85%;
+}
+
+/* === Agent Message === */
+.agent-message {
+  align-items: flex-start;
+}
+
+.agent-message .message-content {
+  background-color: var(--agent-bubble);
+  color: var(--ink);
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  padding: 14px 18px;
+  max-width: 92%;
+}
+
+/* === Formula Card === */
+.formula-card {
+  background-color: var(--formula-bg);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  padding: 20px 24px;
+  margin: 12px 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.formula-card .katex {
+  font-size: 18px;
+  line-height: 1.8;
+}
+
+.formula-card::-webkit-scrollbar {
+  height: 4px;
+}
+
+.formula-card::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.formula-card::-webkit-scrollbar-thumb {
+  background: var(--hairline);
+  border-radius: 2px;
+}
+
+/* Inline KaTeX within messages */
+.message-content .katex {
+  font-size: 0.95em;
+}
+
+/* === Problem Card === */
+.problem-card {
+  background-color: var(--canvas-elevated);
+  border: 1px solid var(--hairline-strong);
+  border-radius: 10px;
+  padding: 20px 24px;
+  margin: 12px 0;
+}
+
+.problem-card .problem-tag {
+  display: inline-block;
+  font-family: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.0;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  background-color: var(--accent-soft);
+  color: var(--accent);
+  border-radius: 4px;
+  padding: 4px 10px;
+  margin-bottom: 12px;
+}
+
+.problem-card .problem-title {
+  font-weight: 540;
+  font-size: 20px;
+  line-height: 1.2;
+  letter-spacing: -0.4px;
+  margin-bottom: 12px;
+}
+
+.problem-card .problem-body {
+  font-weight: 460;
+  font-size: 17px;
+  line-height: 1.6;
+}
+
+/* === Knowledge Tag === */
+.knowledge-tag {
+  display: inline-block;
+  font-family: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.0;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  background-color: var(--accent-soft);
+  color: var(--accent);
+  border-radius: 4px;
+  padding: 4px 10px;
+}
+
+/* === Typography helpers === */
+.display-lg {
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.96px;
+}
+
+.display-md {
+  font-size: 24px;
+  font-weight: 540;
+  line-height: 1.15;
+  letter-spacing: -0.48px;
+}
+
+.heading-lg {
+  font-size: 20px;
+  font-weight: 540;
+  line-height: 1.2;
+  letter-spacing: -0.4px;
+}
+
+.heading-md {
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.2px;
+}
+
+.body-sm {
+  font-size: 13px;
+  font-weight: 460;
+  line-height: 1.45;
+}
+
+.block-tag {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.0;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+/* === Input Bar === */
+.input-bar-wrapper {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 12px 24px;
+  background: linear-gradient(to top, var(--canvas) 60%, transparent);
+  pointer-events: none;
+  z-index: 50;
+}
+
+.input-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background-color: var(--canvas-elevated);
+  border: 1px solid var(--hairline-strong);
+  border-radius: 14px;
+  padding: 14px 18px;
+  max-width: 720px;
+  margin: 0 auto;
+  box-shadow: 0 2px 8px rgba(61, 56, 53, 0.06);
+  pointer-events: auto;
+  transition: border-color 200ms ease;
+}
+
+.input-bar:focus-within {
+  border-color: var(--accent);
+}
+
+.input-field {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-family: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  font-weight: 460;
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--ink);
+  outline: none;
+  min-height: 24px;
+}
+
+.input-field::placeholder {
+  color: var(--ink-faint);
+}
+
+.btn-send {
+  width: 40px;
+  height: 40px;
+  border-radius: 9999px;
+  background-color: var(--accent);
+  color: var(--on-accent);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 200ms ease;
+}
+
+.btn-send:hover {
+  background-color: var(--accent-hover);
+}
+
+.btn-send:active {
+  transform: scale(0.95);
+}
+
+.btn-send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* === Typing Indicator === */
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+.typing-indicator .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--ink-faint);
+  animation: typingBounce 1.4s infinite ease-in-out;
+}
+
+.typing-indicator .dot:nth-child(1) { animation-delay: 0s; }
+.typing-indicator .dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-indicator .dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typingBounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1.0); opacity: 1; }
+}
+
+/* === Error Message === */
+.error-message {
+  color: var(--error);
+  font-size: 15px;
+  font-weight: 460;
+  line-height: 1.55;
+  letter-spacing: 0;
+}
+
+/* === Responsive: Mobile === */
+@media (max-width: 767px) {
+  .nav-bar {
+    padding: 0 16px;
+    gap: 12px;
+  }
+
+  .nav-brand {
+    font-size: 11px;
+  }
+
+  .conversation {
+    padding: 0 16px;
+  }
+
+  .input-bar-wrapper {
+    padding: 12px 16px;
+  }
+
+  .input-bar {
+    padding: 12px 14px;
+  }
+
+  .user-message .message-content {
+    max-width: 92%;
+  }
+
+  .formula-card {
+    padding: 16px 18px;
+  }
+}
+
+/* === Responsive: Tablet === */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .conversation {
+    max-width: 640px;
+  }
+
+  .input-bar {
+    max-width: 640px;
+  }
+}
+
+/* === Accessibility: Focus === */
+.input-field:focus-visible,
+.btn-send:focus-visible,
+.nav-tab:focus-visible,
+.mode-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* === Selection === */
+::selection {
+  background-color: var(--accent-soft);
+  color: var(--ink);
+}

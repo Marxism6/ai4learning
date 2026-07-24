@@ -2,7 +2,10 @@
  * Numerical Analysis Tutor — Chat Application Logic
  *
  * Handles:
+ * - Username entry overlay and localStorage persistence
  * - Fetching and rendering knowledge block nav tabs
+ * - Progress indicator (N/M blocks completed)
+ * - Prerequisite chips (done vs. pending)
  * - Sending messages to the API with block context
  * - Rendering messages with KaTeX formula support
  * - Mode toggle (eye-protection / standard)
@@ -14,43 +17,45 @@
 
   // === State ===
   const state = {
-    username: 'student',
+    username: null,
     history: [],
     isLoading: false,
     theme: 'eye-protection',
-    blockSlug: null,       // currently selected block slug (null = general chat)
-    blocks: null,          // block data from /api/blocks
+    blockSlug: null,
+    blocks: null,
+    progress: null,        // progress data from /api/progress/{username}
   };
 
   // === DOM References ===
+  const overlay = document.getElementById('usernameOverlay');
+  const usernameForm = document.getElementById('usernameForm');
+  const usernameInput = document.getElementById('usernameInput');
+  const usernameStart = document.getElementById('usernameStart');
   const conversation = document.getElementById('conversation');
   const inputField = document.getElementById('inputField');
   const sendButton = document.getElementById('sendButton');
   const modeToggle = document.getElementById('modeToggle');
   const navTabs = document.getElementById('navTabs');
+  const navUser = document.getElementById('navUser');
+  const progressIndicator = document.getElementById('progressIndicator');
   const scrollAnchor = document.getElementById('scrollAnchor');
 
   // === Helpers ===
 
-  /** Escape HTML special chars. */
   function escapeHtml(str) {
     const div = document.createElement('div');
     div.appendChild(document.createTextNode(str));
     return div.innerHTML;
   }
 
-  /** Scroll the chat area to the bottom smoothly. */
   function scrollToBottom() {
     if (scrollAnchor) {
       scrollAnchor.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
   }
 
-  // === LaTeX Parsing ===
+  // === LaTeX ===
 
-  /**
-   * Try to render LaTeX with KaTeX; returns HTML string or null on failure.
-   */
   function tryRenderLatex(latex, displayMode) {
     try {
       return katex.renderToString(latex, {
@@ -63,10 +68,6 @@
     }
   }
 
-  /**
-   * Convert a text segment (which may contain inline $...$ math)
-   * into HTML with inline KaTeX rendered.
-   */
   function renderInlineMath(text) {
     if (!text.trim()) return '';
 
@@ -91,12 +92,7 @@
     return parts.join('');
   }
 
-  /**
-   * Convert markdown text (from agent response) into HTML.
-   * Supports: paragraphs, bold, italic, code, lists, display math, inline math.
-   */
   function markdownToHtml(markdown) {
-    // First, protect display math blocks from markdown processing
     const displayMathBlocks = [];
     let processed = markdown.replace(/\$\$([\s\S]*?)\$\$/g, function (_, math) {
       const idx = displayMathBlocks.length;
@@ -104,7 +100,6 @@
       return `\x00MATHBLOCK${idx}\x00`;
     });
 
-    // Extract ::: problem blocks before processing markdown
     const problemBlocks = [];
     processed = processed.replace(/::: problem\s*\n([\s\S]*?):::/g, function (_, content) {
       const idx = problemBlocks.length;
@@ -112,7 +107,6 @@
       return `\x00PROBLEM${idx}\x00`;
     });
 
-    // Process markdown line by line
     const lines = processed.split('\n');
     const htmlLines = [];
     let inList = false;
@@ -121,88 +115,55 @@
       let line = lines[i];
       const trimmed = line.trim();
 
-      // Empty line
       if (!trimmed) {
-        if (inList) {
-          htmlLines.push('</ul>');
-          inList = false;
-        }
+        if (inList) { htmlLines.push('</ul>'); inList = false; }
         continue;
       }
 
-      // Unordered list
       if (trimmed.match(/^[-*+]\s+/)) {
-        if (!inList) {
-          htmlLines.push('<ul>');
-          inList = true;
-        }
-        const itemContent = trimmed.replace(/^[-*+]\s+/, '');
-        htmlLines.push(`<li>${renderInlineMath(itemContent)}</li>`);
+        if (!inList) { htmlLines.push('<ul>'); inList = true; }
+        htmlLines.push(`<li>${renderInlineMath(trimmed.replace(/^[-*+]\s+/, ''))}</li>`);
         continue;
       }
 
-      // Ordered list
       if (trimmed.match(/^\d+\.\s+/)) {
-        if (!inList) {
-          htmlLines.push('<ol>');
-          inList = true;
-        }
-        const itemContent = trimmed.replace(/^\d+\.\s+/, '');
-        htmlLines.push(`<li>${renderInlineMath(itemContent)}</li>`);
+        if (!inList) { htmlLines.push('<ol>'); inList = true; }
+        htmlLines.push(`<li>${renderInlineMath(trimmed.replace(/^\d+\.\s+/, ''))}</li>`);
         continue;
       }
 
-      // Close list if we were in one
-      if (inList) {
-        htmlLines.push('</ul>');
-        inList = false;
-      }
+      if (inList) { htmlLines.push('</ul>'); inList = false; }
 
-      // Regular paragraph — process inline markdown
       let paragraph = renderInlineMath(line);
-      // Bold
       paragraph = paragraph.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-      // Italic
       paragraph = paragraph.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
       htmlLines.push(`<p>${paragraph}</p>`);
     }
 
-    if (inList) {
-      htmlLines.push('</ul>');
-    }
+    if (inList) { htmlLines.push('</ul>'); }
 
     let html = htmlLines.join('\n');
 
-    // Restore display math blocks
     html = html.replace(/\x00MATHBLOCK(\d+)\x00/g, function (_, idx) {
       const math = displayMathBlocks[parseInt(idx)];
       const rendered = tryRenderLatex(math, true);
       return `<div class="formula-card">${rendered || escapeHtml('$$' + math + '$$')}</div>`;
     });
 
-    // Render problem blocks as styled problem cards
     html = html.replace(/\x00PROBLEM(\d+)\x00/g, function (_, idx) {
       const content = problemBlocks[parseInt(idx)];
-      // Parse the problem: first line is "**TOPIC** | Level N: description"
       const lines = content.split('\n');
       const headerLine = lines[0].trim();
       const bodyLines = lines.slice(1).filter(function (l) { return l.trim(); });
 
-      // Extract tag: usually **BOLD TEXT** | ...
       var tag = '';
-      var bodyHtml = '';
-
       var headerMatch = headerLine.match(/^\*\*(.+?)\*\*/);
-      if (headerMatch) {
-        tag = headerMatch[1];
-      }
+      if (headerMatch) { tag = headerMatch[1]; }
 
-      // Render body with inline math
-      bodyHtml = bodyLines.map(function (l) {
+      var bodyHtml = bodyLines.map(function (l) {
         return '<p>' + renderInlineMath(l) + '</p>';
       }).join('\n');
 
-      // Also render the header with inline math
       var headerHtml = renderInlineMath(headerLine);
 
       return '<div class="problem-card" data-problem="">' +
@@ -217,24 +178,111 @@
     return html;
   }
 
-  // === Message Rendering ===
+  // === Progress & Prerequisites ===
 
   /**
-   * Create a user message bubble and append to conversation.
+   * Fetch progress for the current user and update UI.
    */
+  async function loadProgress() {
+    if (!state.username) return;
+
+    try {
+      const response = await fetch('/api/progress/' + encodeURIComponent(state.username));
+      if (!response.ok) return;
+      state.progress = await response.json();
+      updateProgressUI();
+    } catch (err) {
+      console.error('Failed to load progress:', err);
+    }
+  }
+
+  /**
+   * Update progress indicator and prerequisite chips based on loaded progress.
+   */
+  function updateProgressUI() {
+    if (!state.progress) return;
+
+    // Progress indicator: "N/M blocks completed"
+    var completed = state.progress.completed_count;
+    var total = state.progress.total_blocks;
+    progressIndicator.textContent = completed + '/' + total + ' completed';
+    progressIndicator.style.display = '';
+
+    // Update prerequisite chips if a block is selected
+    if (state.blockSlug && state.blocks && state.blocks[state.blockSlug]) {
+      renderPrerequisiteChips(state.blockSlug);
+    }
+  }
+
+  /**
+   * Render prerequisite chips for a given block slug.
+   */
+  function renderPrerequisiteChips(slug) {
+    if (!state.blocks || !state.blocks[slug]) return;
+
+    var block = state.blocks[slug];
+    var prereqs = block.prerequisites || [];
+
+    if (!prereqs.length) return;
+
+    // Remove old chips section
+    var oldSection = document.getElementById('prerequisiteChips');
+    if (oldSection) oldSection.remove();
+
+    var container = document.createElement('div');
+    container.id = 'prerequisiteChips';
+
+    var label = document.createElement('div');
+    label.className = 'body-sm';
+    label.style.cssText = 'color: var(--ink-mute); margin-bottom: 8px;';
+    label.textContent = 'Prerequisites:';
+    container.appendChild(label);
+
+    var chipsDiv = document.createElement('div');
+    chipsDiv.className = 'prerequisite-chips';
+
+    prereqs.forEach(function (prereqSlug) {
+      var chip = document.createElement('span');
+      chip.className = 'prerequisite-chip';
+
+      var prereqBlock = state.blocks[prereqSlug];
+      var labelText = prereqBlock ? prereqBlock.title : prereqSlug;
+
+      // Check if this prerequisite is mastered
+      if (state.progress && state.progress.blocks && state.progress.blocks[prereqSlug]) {
+        var pstatus = state.progress.blocks[prereqSlug].status;
+        if (pstatus === 'mastered') {
+          chip.classList.add('prerequisite-chip-done');
+        }
+      }
+
+      chip.textContent = labelText.toUpperCase();
+      chipsDiv.appendChild(chip);
+    });
+
+    container.appendChild(chipsDiv);
+
+    // Insert after nav bar reference point
+    var welcomeMsg = conversation.querySelector('[data-message="welcome"]');
+    if (welcomeMsg) {
+      welcomeMsg.parentNode.insertBefore(container, welcomeMsg.nextSibling);
+    } else {
+      conversation.insertBefore(container, conversation.firstChild);
+    }
+  }
+
+  // === Message Rendering ===
+
   function addUserMessage(text) {
     const msgDiv = document.createElement('div');
     msgDiv.className = 'message user-message';
     const content = document.createElement('div');
     content.className = 'message-content';
-    content.innerHTML = `<p>${escapeHtml(text)}</p>`;
+    content.innerHTML = '<p>' + escapeHtml(text) + '</p>';
     msgDiv.appendChild(content);
     conversation.appendChild(msgDiv);
   }
 
-  /**
-   * Create an agent message bubble with markdown + KaTeX rendering.
-   */
   function addAgentMessage(htmlContent) {
     const msgDiv = document.createElement('div');
     msgDiv.className = 'message agent-message';
@@ -246,7 +294,6 @@
     msgDiv.appendChild(contentDiv);
     conversation.appendChild(msgDiv);
 
-    // Re-render any KaTeX in the message to handle edge cases
     if (window.renderMathInElement) {
       try {
         window.renderMathInElement(contentDiv, {
@@ -256,15 +303,10 @@
           ],
           throwOnError: false,
         });
-      } catch (e) {
-        // Silently ignore — we already rendered inline math
-      }
+      } catch (e) { /* ignore */ }
     }
   }
 
-  /**
-   * Show or hide the typing indicator.
-   */
   function setTypingIndicator(visible) {
     let indicator = document.getElementById('typingIndicator');
     if (visible) {
@@ -272,41 +314,30 @@
         indicator = document.createElement('div');
         indicator.id = 'typingIndicator';
         indicator.className = 'message agent-message';
-        indicator.innerHTML = `
-          <div class="message-content">
-            <div class="typing-indicator">
-              <span class="dot"></span>
-              <span class="dot"></span>
-              <span class="dot"></span>
-            </div>
-          </div>`;
+        indicator.innerHTML =
+          '<div class="message-content">' +
+          '<div class="typing-indicator">' +
+          '<span class="dot"></span><span class="dot"></span><span class="dot"></span>' +
+          '</div></div>';
         conversation.appendChild(indicator);
       }
     } else {
-      if (indicator) {
-        indicator.remove();
-      }
+      if (indicator) indicator.remove();
     }
     scrollToBottom();
   }
 
-  /**
-   * Show an error message in the conversation.
-   */
   function addErrorMessage(text) {
     const msgDiv = document.createElement('div');
     msgDiv.className = 'message agent-message';
     const content = document.createElement('div');
     content.className = 'message-content';
-    content.innerHTML = `<p class="error-message">${escapeHtml(text)}</p>`;
+    content.innerHTML = '<p class="error-message">' + escapeHtml(text) + '</p>';
     msgDiv.appendChild(content);
     conversation.appendChild(msgDiv);
     scrollToBottom();
   }
 
-  /**
-   * Add a block-context hint message showing which block is active.
-   */
   function addBlockContextMessage(block) {
     const msgDiv = document.createElement('div');
     msgDiv.className = 'message agent-message';
@@ -315,21 +346,18 @@
     const contentDiv = document.createElement('div');
     contentDiv.className = 'message-content';
 
-    contentDiv.innerHTML = `
-      <div class="knowledge-tag" style="margin-bottom: 8px;">${escapeHtml(block.title.toUpperCase())}</div>
-      <p><strong>${escapeHtml(block.title)}</strong> — ${escapeHtml(block.description)}</p>
-      <p style="font-size: 15px; color: var(--ink-mute); margin-top: 8px;">
-        I'll guide you through this topic. What would you like to explore?
-      </p>`;
+    contentDiv.innerHTML =
+      '<div class="knowledge-tag" style="margin-bottom: 8px;">' + escapeHtml(block.title.toUpperCase()) + '</div>' +
+      '<p><strong>' + escapeHtml(block.title) + '</strong> — ' + escapeHtml(block.description) + '</p>' +
+      '<p style="font-size: 15px; color: var(--ink-mute); margin-top: 8px;">' +
+      "I'll guide you through this topic. What would you like to explore?" +
+      '</p>';
 
     msgDiv.appendChild(contentDiv);
     conversation.appendChild(msgDiv);
     scrollToBottom();
   }
 
-  /**
-   * Clear context hint messages from the conversation.
-   */
   function removeContextMessages() {
     const msgs = conversation.querySelectorAll('[data-message="context"]');
     msgs.forEach(function (el) { el.remove(); });
@@ -337,9 +365,6 @@
 
   // === Nav Tabs ===
 
-  /**
-   * Fetch knowledge blocks from the API and render nav tabs.
-   */
   async function loadBlocks() {
     try {
       const response = await fetch('/api/blocks');
@@ -351,18 +376,13 @@
     }
   }
 
-  /**
-   * Render block tabs in the nav bar.
-   */
   function renderTabs() {
     if (!state.blocks) return;
 
-    // Remove all existing tabs except the first "CHAT" tab
     while (navTabs.children.length > 1) {
       navTabs.removeChild(navTabs.lastChild);
     }
 
-    // Sort blocks by topic then title for logical grouping
     const sorted = Object.values(state.blocks).sort(function (a, b) {
       if (a.topic !== b.topic) return a.topic.localeCompare(b.topic);
       return a.title.localeCompare(b.title);
@@ -378,12 +398,7 @@
     });
   }
 
-  /**
-   * Select a knowledge block: update UI and state.
-   * Pass slug = null or "" to select "general chat".
-   */
   function selectBlock(slug) {
-    // Update state
     state.blockSlug = slug || null;
 
     // Update active tab
@@ -394,15 +409,17 @@
       tab.setAttribute('data-active', isActive ? 'true' : 'false');
     });
 
-    // Remove old context messages and add block context
+    // Remove old context messages and chips
     removeContextMessages();
+    var oldChips = document.getElementById('prerequisiteChips');
+    if (oldChips) oldChips.remove();
+
     if (slug && state.blocks && state.blocks[slug]) {
       addBlockContextMessage(state.blocks[slug]);
+      renderPrerequisiteChips(slug);
     }
 
-    // Reset conversation history for the new block
     state.history = [];
-
     inputField.focus();
   }
 
@@ -414,12 +431,9 @@
     inputField.disabled = true;
     sendButton.disabled = true;
 
-    // Add user message immediately
     addUserMessage(message);
     state.history.push({ role: 'user', content: message });
     scrollToBottom();
-
-    // Show typing indicator
     setTypingIndicator(true);
 
     try {
@@ -430,7 +444,7 @@
           username: state.username,
           message: message,
           block_slug: state.blockSlug,
-          history: state.history.slice(0, -1), // history without the new message
+          history: state.history.slice(0, -1),
         }),
       });
 
@@ -442,14 +456,11 @@
       const data = await response.json();
       const reply = data.reply;
 
-      // Hide typing indicator
       setTypingIndicator(false);
 
-      // Render agent response
       const html = markdownToHtml(reply);
       addAgentMessage(html);
 
-      // Update history
       state.history.push({ role: 'assistant', content: reply });
     } catch (err) {
       setTypingIndicator(false);
@@ -481,6 +492,36 @@
 
   sendButton.addEventListener('click', handleSend);
 
+  // === Username Overlay ===
+
+  function hideOverlay() {
+    overlay.classList.add('hidden');
+    // Restore focus to input
+    setTimeout(function () { inputField.focus(); }, 250);
+  }
+
+  function handleUsernameSubmit(e) {
+    e.preventDefault();
+    var name = usernameInput.value.trim();
+    if (!name) return;
+
+    state.username = name;
+    navUser.textContent = name;
+
+    // Store in localStorage
+    try {
+      localStorage.setItem('nat-username', name);
+    } catch (_) { /* ignore */ }
+
+    hideOverlay();
+
+    // Load blocks and progress
+    loadBlocks();
+    loadProgress();
+  }
+
+  usernameForm.addEventListener('submit', handleUsernameSubmit);
+
   // === Mode Toggle ===
   modeToggle.addEventListener('click', function () {
     const options = this.querySelectorAll('.mode-option');
@@ -494,7 +535,6 @@
     state.theme = newTheme;
     document.documentElement.setAttribute('data-theme', newTheme);
 
-    // Store preference
     try {
       localStorage.setItem('nat-theme', newTheme);
     } catch (_) { /* ignore */ }
@@ -516,11 +556,22 @@
     }
   } catch (_) { /* ignore */ }
 
-  // Load knowledge blocks
-  loadBlocks();
+  // Check for saved username
+  try {
+    var savedUsername = localStorage.getItem('nat-username');
+    if (savedUsername) {
+      state.username = savedUsername;
+      navUser.textContent = savedUsername;
+      hideOverlay();
+      loadBlocks();
+      loadProgress();
+    }
+  } catch (_) { /* ignore */ }
 
-  // Focus input on load
-  inputField.focus();
+  // Focus username input if overlay visible
+  if (!overlay.classList.contains('hidden')) {
+    usernameInput.focus();
+  }
 
   // Export for debugging
   window.__NAT = { state };

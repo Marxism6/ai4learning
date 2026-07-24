@@ -522,6 +522,138 @@ body {
   letter-spacing: 0;
 }
 
+/* === Username Overlay === */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background-color: var(--canvas);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  transition: opacity 200ms ease;
+}
+
+.overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.username-card {
+  background-color: var(--canvas-elevated);
+  border: 1px solid var(--hairline-strong);
+  border-radius: 14px;
+  padding: 32px;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+}
+
+.username-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.username-input {
+  font-family: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  font-weight: 460;
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--ink);
+  background-color: var(--canvas);
+  border: 1px solid var(--hairline-strong);
+  border-radius: 10px;
+  padding: 14px 18px;
+  outline: none;
+  text-align: center;
+  transition: border-color 200ms ease;
+}
+
+.username-input:focus {
+  border-color: var(--accent);
+}
+
+.username-input::placeholder {
+  color: var(--ink-faint);
+}
+
+.btn-primary {
+  font-family: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.0;
+  letter-spacing: 0;
+  background-color: var(--accent);
+  color: var(--on-accent);
+  border: none;
+  border-radius: 10px;
+  padding: 12px 20px;
+  cursor: pointer;
+  transition: background-color 200ms ease;
+}
+
+.btn-primary:hover {
+  background-color: var(--accent-hover);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* === Progress Indicator === */
+.progress-indicator {
+  display: inline-flex;
+  align-items: center;
+  background-color: var(--accent-soft);
+  color: var(--accent);
+  font-family: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  font-weight: 460;
+  line-height: 1.45;
+  letter-spacing: 0;
+  border-radius: 9999px;
+  padding: 4px 12px;
+  white-space: nowrap;
+}
+
+/* === Nav User === */
+.nav-user {
+  font-family: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  font-weight: 460;
+  line-height: 1.45;
+  color: var(--nav-mute);
+  white-space: nowrap;
+}
+
+/* === Prerequisite Chips (in chat area) === */
+.prerequisite-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.prerequisite-chip {
+  display: inline-block;
+  background-color: var(--canvas-inset);
+  color: var(--ink-mute);
+  font-family: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  font-weight: 460;
+  line-height: 1.45;
+  letter-spacing: 0;
+  border-radius: 9999px;
+  padding: 6px 14px;
+}
+
+.prerequisite-chip-done {
+  background-color: var(--accent-soft);
+  color: var(--accent);
+}
+
 /* === Responsive: Mobile === */
 @media (max-width: 767px) {
   .nav-bar {

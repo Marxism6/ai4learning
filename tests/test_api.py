@@ -1,9 +1,24 @@
 """API tests for the Numerical Analysis Tutor."""
 
+import os
+import shutil
+
 import pytest
 from httpx import AsyncClient, ASGITransport
 
 from app.main import app
+from app.progress import DATA_DIR
+
+
+@pytest.fixture(autouse=True)
+def clean_data():
+    """Clean data files before and after each test."""
+    if os.path.exists(DATA_DIR):
+        shutil.rmtree(DATA_DIR)
+    os.makedirs(DATA_DIR, exist_ok=True)
+    yield
+    if os.path.exists(DATA_DIR):
+        shutil.rmtree(DATA_DIR)
 
 
 @pytest.fixture
@@ -162,3 +177,69 @@ async def test_chat_with_block_slug(client):
         },
     )
     assert response.status_code in (200, 502)
+
+
+# === Progress (Ticket 04) ===
+
+@pytest.mark.anyio
+async def test_progress_get_new_user(client):
+    """GET /api/progress/{username} returns progress for a new user."""
+    response = await client.get("/api/progress/testuser")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["username"] == "testuser"
+    assert data["completed_count"] >= 0
+    assert data["total_blocks"] >= 5
+    assert "blocks" in data
+
+
+@pytest.mark.anyio
+async def test_progress_update_status(client):
+    """POST /api/progress/{username} updates block status."""
+    response = await client.post(
+        "/api/progress/testuser",
+        json={"block_slug": "newton-method", "status": "in-progress"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["blocks"]["newton-method"]["status"] == "in-progress"
+
+
+@pytest.mark.anyio
+async def test_progress_update_mastery(client):
+    """POST /api/progress/{username} with mastery_level=3 auto-sets mastered."""
+    response = await client.post(
+        "/api/progress/testuser",
+        json={"block_slug": "interpolation", "mastery_level": 3},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["blocks"]["interpolation"]["status"] == "mastered"
+
+
+@pytest.mark.anyio
+async def test_progress_unknown_block(client):
+    """POST with unknown block slug returns 400."""
+    response = await client.post(
+        "/api/progress/testuser",
+        json={"block_slug": "nonexistent", "status": "mastered"},
+    )
+    assert response.status_code == 400
+
+
+@pytest.mark.anyio
+async def test_progress_username_isolation(client):
+    """Two users have independent progress."""
+    # Update alice's progress
+    await client.post(
+        "/api/progress/alice",
+        json={"block_slug": "newton-method", "status": "mastered"},
+    )
+    # Bob should not be affected
+    resp_bob = await client.get("/api/progress/bob")
+    bob_data = resp_bob.json()
+    assert bob_data["blocks"]["newton-method"]["status"] == "not-started"
+    # Alice should have it mastered
+    resp_alice = await client.get("/api/progress/alice")
+    alice_data = resp_alice.json()
+    assert alice_data["blocks"]["newton-method"]["status"] == "mastered"

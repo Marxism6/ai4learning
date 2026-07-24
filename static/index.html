@@ -12,6 +12,28 @@
 </head>
 <body>
 
+  <!-- USERNAME OVERLAY -->
+  <div class="overlay" id="usernameOverlay">
+    <div class="username-card">
+      <div class="display-md" style="margin-bottom: 8px;">Numerical Analysis Tutor</div>
+      <p class="body-sm" style="color: var(--ink-mute); margin-bottom: 24px;">
+        Enter your name to begin. Progress is saved per user.
+      </p>
+      <form id="usernameForm" class="username-form">
+        <input
+          type="text"
+          class="username-input"
+          id="usernameInput"
+          placeholder="Your name"
+          maxlength="30"
+          autocomplete="off"
+          autofocus
+        >
+        <button type="submit" class="btn-primary" id="usernameStart">Start</button>
+      </form>
+    </div>
+  </div>
+
   <!-- NAV BAR -->
   <nav class="nav-bar" id="navBar">
     <div class="nav-brand">NUMERICAL ANALYSIS TUTOR</div>
@@ -19,6 +41,8 @@
       <button class="nav-tab nav-tab-active" data-block="">CHAT</button>
     </div>
     <div class="nav-controls">
+      <span class="nav-user" id="navUser"></span>
+      <span class="progress-indicator" id="progressIndicator" style="display:none;">0/0</span>
       <button class="mode-toggle" id="modeToggle" title="Toggle color mode">
         <span class="mode-option active">EYE</span>
         <span class="mode-option">STD</span>

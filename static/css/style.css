@@ -298,6 +298,28 @@ body {
   line-height: 1.8;
 }
 
+.formula-card {
+  position: relative;
+}
+
+/* Fade-edge scroll hint for wide formulas */
+.formula-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 32px;
+  background: linear-gradient(to right, transparent, var(--formula-bg));
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.formula-card.is-overflowing::after {
+  opacity: 1;
+}
+
 .formula-card::-webkit-scrollbar {
   height: 4px;
 }
@@ -751,6 +773,30 @@ body {
 
   .formula-card {
     padding: 16px 18px;
+  }
+
+  /* Touch targets: meet 44px minimum for interactive elements */
+  .nav-tab {
+    padding: 10px 14px;
+    min-height: 44px;
+  }
+
+  .input-bar {
+    min-height: 48px;
+  }
+
+  .btn-new-conv {
+    padding: 8px 12px;
+    min-height: 44px;
+  }
+
+  .memory-toggle {
+    padding: 8px 12px;
+    min-height: 44px;
+  }
+
+  .mode-toggle {
+    min-height: 44px;
   }
 }
 

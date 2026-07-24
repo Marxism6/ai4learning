@@ -722,6 +722,28 @@
     usernameInput.focus();
   }
 
+  // === Fade-Edge Scroll Hint for Formula Cards ===
+
+  /**
+   * Check if formula cards have overflow content and add hint markers.
+   */
+  function updateFormulaOverflow() {
+    var cards = conversation.querySelectorAll('.formula-card');
+    cards.forEach(function (card) {
+      if (card.scrollWidth > card.clientWidth) {
+        card.classList.add('is-overflowing');
+      } else {
+        card.classList.remove('is-overflowing');
+      }
+    });
+  }
+
+  // Observe DOM changes to re-check formula card overflow
+  var observer = new MutationObserver(updateFormulaOverflow);
+  observer.observe(conversation, { childList: true, subtree: true });
+  // Also check on resize
+  window.addEventListener('resize', updateFormulaOverflow);
+
   window.__NAT = { state };
 
 })();

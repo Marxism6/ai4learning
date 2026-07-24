@@ -528,6 +528,11 @@
     state.history = [];
     saveSession();
     inputField.focus();
+
+    // Active training mode: auto-send a prompt so the agent proactively quizzes
+    if (slug) {
+      sendMessage("I'm ready to study " + slug + ". Please assess my current understanding and start teaching.");
+    }
   }
 
   // === API Calls ===

@@ -854,6 +854,108 @@ body {
   }
 }
 
+/* === Block Status Panel === */
+.block-status {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 8px 24px 0;
+}
+
+.block-status-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background-color: var(--canvas-inset);
+  transition: background-color 100ms ease;
+}
+
+.block-status-header:hover {
+  background-color: var(--hairline);
+}
+
+.block-status-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+
+.block-status-toggle {
+  color: var(--ink-faint);
+  display: flex;
+  align-items: center;
+  transition: transform 200ms ease;
+}
+
+.block-status.is-open .block-status-toggle {
+  transform: rotate(180deg);
+}
+
+.block-status-body {
+  display: none;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 12px;
+}
+
+.block-status.is-open .block-status-body {
+  display: flex;
+}
+
+.block-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 540;
+  line-height: 1.2;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  border-radius: 4px;
+  padding: 5px 10px;
+  cursor: pointer;
+  border: none;
+  transition: opacity 100ms ease;
+  white-space: nowrap;
+}
+
+.block-status-chip:hover {
+  opacity: 0.8;
+}
+
+.block-status-chip.not-started {
+  background-color: var(--canvas-inset);
+  color: var(--ink-faint);
+}
+
+.block-status-chip.in-progress {
+  background-color: var(--accent-soft);
+  color: var(--accent);
+}
+
+.block-status-chip.mastered {
+  background-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.block-status-chip .chip-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: currentColor;
+  animation: chipPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes chipPulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
 /* === Accessibility: Focus === */
 .input-field:focus-visible,
 .btn-send:focus-visible,

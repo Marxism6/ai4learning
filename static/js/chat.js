@@ -54,6 +54,10 @@
   const uploadButton = document.getElementById('uploadButton');
   const fileInput = document.getElementById('fileInput');
   const scrollAnchor = document.getElementById('scrollAnchor');
+  const blockStatus = document.getElementById('blockStatus');
+  const blockStatusHeader = document.getElementById('blockStatusHeader');
+  const blockStatusBody = document.getElementById('blockStatusBody');
+  const blockStatusToggle = document.getElementById('blockStatusToggle');
 
   // === Helpers ===
 
@@ -375,7 +379,68 @@
     var total = state.progress.total_blocks;
     progressIndicator.textContent = completed + '/' + total + ' completed';
     progressIndicator.style.display = '';
+
+    renderBlockStatusChips();
   }
+
+  /**
+   * Render Block Status chips — shows each block with its mastery state.
+   * Clicking a chip switches to that block (like clicking a nav tab).
+   */
+  function renderBlockStatusChips() {
+    if (!state.progress || !state.blocks) return;
+
+    blockStatus.style.display = '';
+
+    var blocks = state.progress.blocks;
+    var sorted = Object.values(state.blocks).sort(function (a, b) {
+      if (a.topic !== b.topic) return a.topic.localeCompare(b.topic);
+      return a.title.localeCompare(b.title);
+    });
+
+    blockStatusBody.innerHTML = '';
+
+    sorted.forEach(function (blockDef) {
+      var slug = blockDef.slug;
+      var b = blocks[slug];
+      var status = b ? b.status : 'not-started';
+
+      var chip = document.createElement('button');
+      chip.className = 'block-status-chip ' + status;
+      chip.dataset.slug = slug;
+
+      if (status === 'mastered') {
+        var check = document.createElement('span');
+        check.textContent = '✓';
+        check.style.fontWeight = '600';
+        chip.appendChild(check);
+      }
+
+      var label = document.createElement('span');
+      label.textContent = blockDef.title.toUpperCase();
+      chip.appendChild(label);
+
+      if (status === 'in-progress') {
+        var dot = document.createElement('span');
+        dot.className = 'chip-dot';
+        chip.appendChild(dot);
+      }
+
+      chip.addEventListener('click', function () {
+        // Only switch if different block
+        if (slug !== state.blockSlug) {
+          selectBlock(slug);
+        }
+      });
+
+      blockStatusBody.appendChild(chip);
+    });
+  }
+
+  // Toggle open/close on block status header click
+  blockStatusHeader.addEventListener('click', function () {
+    blockStatus.classList.toggle('is-open');
+  });
 
   // === Chart Rendering ===
 

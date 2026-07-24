@@ -841,6 +841,14 @@ body {
   .mode-toggle {
     min-height: 44px;
   }
+
+  .lang-toggle {
+    min-height: 44px;
+  }
+
+  .btn-settings {
+    min-height: 44px;
+  }
 }
 
 /* === Responsive: Tablet === */
@@ -954,6 +962,160 @@ body {
 @keyframes chipPulse {
   0%, 100% { opacity: 0.4; }
   50% { opacity: 1; }
+}
+
+/* === Language Toggle (reuses mode-toggle-like pill) === */
+.lang-toggle {
+  display: flex;
+  background-color: var(--canvas-inset);
+  border-radius: 9999px;
+  padding: 2px;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.0;
+  letter-spacing: 0;
+  color: var(--ink-mute);
+}
+
+.lang-option {
+  padding: 6px 10px;
+  border-radius: 9999px;
+  transition: background-color 200ms ease, color 200ms ease;
+  min-width: 28px;
+  text-align: center;
+}
+
+.lang-option.active {
+  background-color: var(--accent);
+  color: var(--on-accent);
+}
+
+/* === Settings Gear Button === */
+.btn-settings {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background-color: transparent;
+  color: var(--nav-mute);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 100ms ease, background-color 100ms ease;
+}
+
+.btn-settings:hover {
+  color: var(--nav-text);
+  background-color: rgba(255,255,255,0.08);
+}
+
+/* === Settings Overlay === */
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+}
+
+.settings-card {
+  background-color: var(--canvas-elevated);
+  border: 1px solid var(--hairline-strong);
+  border-radius: 14px;
+  padding: 28px 32px;
+  max-width: 440px;
+  width: 90%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+}
+
+.settings-title {
+  font-family: var(--font-sans);
+  font-size: 20px;
+  font-weight: 540;
+  line-height: 1.2;
+  letter-spacing: -0.4px;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+
+.settings-label {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.0;
+  color: var(--ink-mute);
+  margin-top: 4px;
+}
+
+.settings-input {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 460;
+  line-height: 1.4;
+  color: var(--ink);
+  background-color: var(--canvas);
+  border: 1px solid var(--hairline-strong);
+  border-radius: 8px;
+  padding: 10px 14px;
+  outline: none;
+  transition: border-color 200ms ease;
+}
+
+.settings-input:focus {
+  border-color: var(--accent);
+}
+
+.settings-input::placeholder {
+  color: var(--ink-faint);
+}
+
+.settings-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.btn-secondary {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.0;
+  background-color: var(--canvas-elevated);
+  color: var(--ink);
+  border: 1px solid var(--hairline-strong);
+  border-radius: 10px;
+  padding: 12px 20px;
+  cursor: pointer;
+  transition: background-color 200ms ease;
+}
+
+.btn-secondary:hover {
+  background-color: var(--canvas-inset);
+}
+
+.btn-secondary.btn-sm {
+  font-size: 13px;
+  padding: 8px 14px;
+  align-self: flex-start;
+}
+
+.settings-hint {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 460;
+  line-height: 1.4;
+  color: var(--ink-faint);
+  margin-top: 4px;
 }
 
 /* === Accessibility: Focus === */

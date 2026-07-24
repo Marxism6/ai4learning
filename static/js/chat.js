@@ -3,6 +3,9 @@
  *
  * Handles:
  * - Username entry overlay and localStorage persistence
+ * - Session persistence (conversation saved/restored from localStorage)
+ * - Cross-session memory toggle (compact mastery summary sent to API)
+ * - New Conversation button
  * - Fetching and rendering knowledge block nav tabs
  * - Progress indicator (N/M blocks completed)
  * - Prerequisite chips (done vs. pending)
@@ -23,7 +26,8 @@
     theme: 'eye-protection',
     blockSlug: null,
     blocks: null,
-    progress: null,        // progress data from /api/progress/{username}
+    progress: null,
+    memoryEnabled: false,   // cross-session memory toggle
   };
 
   // === DOM References ===
@@ -38,6 +42,9 @@
   const navTabs = document.getElementById('navTabs');
   const navUser = document.getElementById('navUser');
   const progressIndicator = document.getElementById('progressIndicator');
+  const newConvButton = document.getElementById('newConvButton');
+  const memoryToggle = document.getElementById('memoryToggle');
+  const memorySlider = document.getElementById('memorySlider');
   const scrollAnchor = document.getElementById('scrollAnchor');
 
   // === Helpers ===
@@ -52,6 +59,142 @@
     if (scrollAnchor) {
       scrollAnchor.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
+  }
+
+  // === localStorage Helpers ===
+
+  const STORAGE_PREFIX = 'nat-';
+
+  function lsGet(key, fallback) {
+    try { var v = localStorage.getItem(STORAGE_PREFIX + key); return v !== null ? v : fallback; }
+    catch (_) { return fallback; }
+  }
+
+  function lsSet(key, value) {
+    try { localStorage.setItem(STORAGE_PREFIX + key, value); }
+    catch (_) { /* ignore */ }
+  }
+
+  function lsRemove(key) {
+    try { localStorage.removeItem(STORAGE_PREFIX + key); }
+    catch (_) { /* ignore */ }
+  }
+
+  function lsGetJSON(key, fallback) {
+    try { var v = localStorage.getItem(STORAGE_PREFIX + key); return v ? JSON.parse(v) : fallback; }
+    catch (_) { return fallback; }
+  }
+
+  function lsSetJSON(key, value) {
+    try { localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(value)); }
+    catch (_) { /* ignore */ }
+  }
+
+  // === Session Persistence ===
+
+  /**
+   * Save current session state to localStorage.
+   */
+  function saveSession() {
+    if (!state.username) return;
+    var session = {
+      history: state.history,
+      blockSlug: state.blockSlug,
+    };
+    lsSetJSON('session-' + state.username, session);
+  }
+
+  /**
+   * Restore session state from localStorage.
+   * Returns true if a session was restored.
+   */
+  function restoreSession() {
+    if (!state.username) return false;
+    var session = lsGetJSON('session-' + state.username, null);
+    if (!session || !session.history || !session.history.length) return false;
+
+    state.history = session.history;
+    state.blockSlug = session.blockSlug || null;
+
+    // Hide welcome message when restoring
+    var welcome = conversation.querySelector('[data-message="welcome"]');
+    if (welcome) welcome.style.display = 'none';
+
+    // Re-render all history messages
+    state.history.forEach(function (msg) {
+      if (msg.role === 'user') {
+        addUserMessage(msg.content, true);
+      } else if (msg.role === 'assistant') {
+        var html = markdownToHtml(msg.content);
+        addAgentMessage(html, true);
+      }
+    });
+
+    // Restore block selection indicator
+    if (state.blockSlug) {
+      updateActiveTab(state.blockSlug);
+    }
+
+    return true;
+  }
+
+  /**
+   * Start a new conversation: clear history, remove session messages, show welcome.
+   */
+  function newConversation() {
+    state.history = [];
+    state.blockSlug = null;
+    updateActiveTab('');
+    saveSession();
+    lsRemove('session-' + state.username);
+
+    // Remove all user and agent messages except welcome
+    var msgs = conversation.querySelectorAll('.message');
+    msgs.forEach(function (el) {
+      if (el.dataset.message !== 'welcome') {
+        el.remove();
+      }
+    });
+
+    // Remove prerequisite chips
+    var chips = document.getElementById('prerequisiteChips');
+    if (chips) chips.remove();
+
+    // Show welcome if hidden
+    var welcome = conversation.querySelector('[data-message="welcome"]');
+    if (welcome) {
+      welcome.style.display = '';
+    }
+
+    inputField.focus();
+  }
+
+  // === Cross-session Memory ===
+
+  /**
+   * Build a compact mastery summary for the LLM (only mastered blocks).
+   * Format: "block_slug (mastery_level), block_slug (mastery_level)"
+   */
+  function buildMemorySummary() {
+    if (!state.progress || !state.progress.blocks) return '';
+
+    var mastered = [];
+    for (var slug in state.progress.blocks) {
+      var b = state.progress.blocks[slug];
+      if (b.status === 'mastered' && b.mastery_level > 0) {
+        mastered.push(slug + ' (' + b.mastery_level + ')');
+      }
+    }
+
+    if (!mastered.length) return '';
+    return mastered.join(', ');
+  }
+
+  /**
+   * Update the memory toggle UI from state.
+   */
+  function updateMemoryUI() {
+    memoryToggle.classList.toggle('active', state.memoryEnabled);
   }
 
   // === LaTeX ===
@@ -122,13 +265,13 @@
 
       if (trimmed.match(/^[-*+]\s+/)) {
         if (!inList) { htmlLines.push('<ul>'); inList = true; }
-        htmlLines.push(`<li>${renderInlineMath(trimmed.replace(/^[-*+]\s+/, ''))}</li>`);
+        htmlLines.push('<li>' + renderInlineMath(trimmed.replace(/^[-*+]\s+/, '')) + '</li>');
         continue;
       }
 
       if (trimmed.match(/^\d+\.\s+/)) {
         if (!inList) { htmlLines.push('<ol>'); inList = true; }
-        htmlLines.push(`<li>${renderInlineMath(trimmed.replace(/^\d+\.\s+/, ''))}</li>`);
+        htmlLines.push('<li>' + renderInlineMath(trimmed.replace(/^\d+\.\s+/, '')) + '</li>');
         continue;
       }
 
@@ -137,7 +280,7 @@
       let paragraph = renderInlineMath(line);
       paragraph = paragraph.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
       paragraph = paragraph.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
-      htmlLines.push(`<p>${paragraph}</p>`);
+      htmlLines.push('<p>' + paragraph + '</p>');
     }
 
     if (inList) { htmlLines.push('</ul>'); }
@@ -147,7 +290,7 @@
     html = html.replace(/\x00MATHBLOCK(\d+)\x00/g, function (_, idx) {
       const math = displayMathBlocks[parseInt(idx)];
       const rendered = tryRenderLatex(math, true);
-      return `<div class="formula-card">${rendered || escapeHtml('$$' + math + '$$')}</div>`;
+      return '<div class="formula-card">' + (rendered || escapeHtml('$$' + math + '$$')) + '</div>';
     });
 
     html = html.replace(/\x00PROBLEM(\d+)\x00/g, function (_, idx) {
@@ -180,9 +323,6 @@
 
   // === Progress & Prerequisites ===
 
-  /**
-   * Fetch progress for the current user and update UI.
-   */
   async function loadProgress() {
     if (!state.username) return;
 
@@ -196,27 +336,19 @@
     }
   }
 
-  /**
-   * Update progress indicator and prerequisite chips based on loaded progress.
-   */
   function updateProgressUI() {
     if (!state.progress) return;
 
-    // Progress indicator: "N/M blocks completed"
     var completed = state.progress.completed_count;
     var total = state.progress.total_blocks;
     progressIndicator.textContent = completed + '/' + total + ' completed';
     progressIndicator.style.display = '';
 
-    // Update prerequisite chips if a block is selected
     if (state.blockSlug && state.blocks && state.blocks[state.blockSlug]) {
       renderPrerequisiteChips(state.blockSlug);
     }
   }
 
-  /**
-   * Render prerequisite chips for a given block slug.
-   */
   function renderPrerequisiteChips(slug) {
     if (!state.blocks || !state.blocks[slug]) return;
 
@@ -225,7 +357,6 @@
 
     if (!prereqs.length) return;
 
-    // Remove old chips section
     var oldSection = document.getElementById('prerequisiteChips');
     if (oldSection) oldSection.remove();
 
@@ -248,7 +379,6 @@
       var prereqBlock = state.blocks[prereqSlug];
       var labelText = prereqBlock ? prereqBlock.title : prereqSlug;
 
-      // Check if this prerequisite is mastered
       if (state.progress && state.progress.blocks && state.progress.blocks[prereqSlug]) {
         var pstatus = state.progress.blocks[prereqSlug].status;
         if (pstatus === 'mastered') {
@@ -262,7 +392,6 @@
 
     container.appendChild(chipsDiv);
 
-    // Insert after nav bar reference point
     var welcomeMsg = conversation.querySelector('[data-message="welcome"]');
     if (welcomeMsg) {
       welcomeMsg.parentNode.insertBefore(container, welcomeMsg.nextSibling);
@@ -273,9 +402,10 @@
 
   // === Message Rendering ===
 
-  function addUserMessage(text) {
+  function addUserMessage(text, noAnimation) {
     const msgDiv = document.createElement('div');
     msgDiv.className = 'message user-message';
+    if (noAnimation) msgDiv.style.animation = 'none';
     const content = document.createElement('div');
     content.className = 'message-content';
     content.innerHTML = '<p>' + escapeHtml(text) + '</p>';
@@ -283,9 +413,10 @@
     conversation.appendChild(msgDiv);
   }
 
-  function addAgentMessage(htmlContent) {
+  function addAgentMessage(htmlContent, noAnimation) {
     const msgDiv = document.createElement('div');
     msgDiv.className = 'message agent-message';
+    if (noAnimation) msgDiv.style.animation = 'none';
 
     const contentDiv = document.createElement('div');
     contentDiv.className = 'message-content';
@@ -314,6 +445,7 @@
         indicator = document.createElement('div');
         indicator.id = 'typingIndicator';
         indicator.className = 'message agent-message';
+        indicator.style.animation = 'none';
         indicator.innerHTML =
           '<div class="message-content">' +
           '<div class="typing-indicator">' +
@@ -398,16 +530,18 @@
     });
   }
 
-  function selectBlock(slug) {
-    state.blockSlug = slug || null;
-
-    // Update active tab
+  function updateActiveTab(slug) {
     const tabs = navTabs.querySelectorAll('.nav-tab');
     tabs.forEach(function (tab) {
       const isActive = tab.dataset.block === (slug || '');
       tab.classList.toggle('nav-tab-active', isActive);
       tab.setAttribute('data-active', isActive ? 'true' : 'false');
     });
+  }
+
+  function selectBlock(slug) {
+    state.blockSlug = slug || null;
+    updateActiveTab(slug);
 
     // Remove old context messages and chips
     removeContextMessages();
@@ -420,6 +554,7 @@
     }
 
     state.history = [];
+    saveSession();
     inputField.focus();
   }
 
@@ -436,16 +571,27 @@
     scrollToBottom();
     setTypingIndicator(true);
 
+    // Build memory summary if enabled
+    var memorySummary = '';
+    if (state.memoryEnabled) {
+      memorySummary = buildMemorySummary();
+    }
+
     try {
+      var body = {
+        username: state.username,
+        message: message,
+        block_slug: state.blockSlug,
+        history: state.history.slice(0, -1),
+      };
+      if (memorySummary) {
+        body.memory_summary = memorySummary;
+      }
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: state.username,
-          message: message,
-          block_slug: state.blockSlug,
-          history: state.history.slice(0, -1),
-        }),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
@@ -462,6 +608,9 @@
       addAgentMessage(html);
 
       state.history.push({ role: 'assistant', content: reply });
+
+      // Save session after each exchange
+      saveSession();
     } catch (err) {
       setTypingIndicator(false);
       addErrorMessage('Error: ' + err.message);
@@ -492,32 +641,42 @@
 
   sendButton.addEventListener('click', handleSend);
 
+  // === New Conversation ===
+  newConvButton.addEventListener('click', newConversation);
+
+  // === Memory Toggle ===
+  memoryToggle.addEventListener('click', function () {
+    state.memoryEnabled = !state.memoryEnabled;
+    updateMemoryUI();
+    lsSet('memory', state.memoryEnabled ? '1' : '0');
+  });
+
   // === Username Overlay ===
 
   function hideOverlay() {
     overlay.classList.add('hidden');
-    // Restore focus to input
     setTimeout(function () { inputField.focus(); }, 250);
+  }
+
+  function onUserLogin(name) {
+    state.username = name;
+    navUser.textContent = name;
+    lsSet('username', name);
+    hideOverlay();
+
+    loadBlocks();
+    loadProgress();
+
+    // Try to restore session; if none, show new conv button
+    var restored = restoreSession();
+    newConvButton.style.display = '';
   }
 
   function handleUsernameSubmit(e) {
     e.preventDefault();
     var name = usernameInput.value.trim();
     if (!name) return;
-
-    state.username = name;
-    navUser.textContent = name;
-
-    // Store in localStorage
-    try {
-      localStorage.setItem('nat-username', name);
-    } catch (_) { /* ignore */ }
-
-    hideOverlay();
-
-    // Load blocks and progress
-    loadBlocks();
-    loadProgress();
+    onUserLogin(name);
   }
 
   usernameForm.addEventListener('submit', handleUsernameSubmit);
@@ -534,46 +693,35 @@
     const newTheme = newActive.textContent.trim() === 'EYE' ? 'eye-protection' : 'standard';
     state.theme = newTheme;
     document.documentElement.setAttribute('data-theme', newTheme);
-
-    try {
-      localStorage.setItem('nat-theme', newTheme);
-    } catch (_) { /* ignore */ }
+    lsSet('theme', newTheme);
   });
 
   // === Init ===
 
-  // Restore theme preference
-  try {
-    const savedTheme = localStorage.getItem('nat-theme');
-    if (savedTheme === 'eye-protection' || savedTheme === 'standard') {
-      state.theme = savedTheme;
-      document.documentElement.setAttribute('data-theme', savedTheme);
-      const options = modeToggle.querySelectorAll('.mode-option');
-      if (savedTheme === 'standard') {
-        options[0].classList.remove('active');
-        options[1].classList.add('active');
-      }
+  // Restore theme
+  var savedTheme = lsGet('theme', 'eye-protection');
+  if (savedTheme === 'eye-protection' || savedTheme === 'standard') {
+    state.theme = savedTheme;
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    if (savedTheme === 'standard') {
+      var options = modeToggle.querySelectorAll('.mode-option');
+      options[0].classList.remove('active');
+      options[1].classList.add('active');
     }
-  } catch (_) { /* ignore */ }
+  }
+
+  // Restore memory toggle
+  state.memoryEnabled = lsGet('memory', '0') === '1';
+  updateMemoryUI();
 
   // Check for saved username
-  try {
-    var savedUsername = localStorage.getItem('nat-username');
-    if (savedUsername) {
-      state.username = savedUsername;
-      navUser.textContent = savedUsername;
-      hideOverlay();
-      loadBlocks();
-      loadProgress();
-    }
-  } catch (_) { /* ignore */ }
-
-  // Focus username input if overlay visible
-  if (!overlay.classList.contains('hidden')) {
+  var savedUsername = lsGet('username', null);
+  if (savedUsername) {
+    onUserLogin(savedUsername);
+  } else {
     usernameInput.focus();
   }
 
-  // Export for debugging
   window.__NAT = { state };
 
 })();

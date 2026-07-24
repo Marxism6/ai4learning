@@ -628,6 +628,74 @@ body {
   white-space: nowrap;
 }
 
+/* === New Conversation Button === */
+.btn-new-conv {
+  font-family: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.0;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  background: transparent;
+  color: var(--nav-mute);
+  border: 1px solid var(--nav-mute);
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 100ms ease, color 100ms ease;
+}
+
+.btn-new-conv:hover {
+  background-color: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
+}
+
+/* === Memory Toggle === */
+.memory-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 9999px;
+  background-color: var(--canvas-inset);
+  transition: background-color 200ms ease;
+  user-select: none;
+}
+
+.memory-toggle.active {
+  background-color: var(--accent-soft);
+}
+
+.memory-label {
+  font-family: 'Inter Variable', system-ui, -apple-system, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.0;
+  letter-spacing: 1px;
+  color: var(--ink-mute);
+}
+
+.memory-toggle.active .memory-label {
+  color: var(--accent);
+}
+
+.memory-slider {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background-color: var(--ink-faint);
+  transition: background-color 200ms ease, transform 200ms ease;
+}
+
+.memory-toggle.active .memory-slider {
+  background-color: var(--accent);
+  transform: translateX(8px);
+}
+
 /* === Prerequisite Chips (in chat area) === */
 .prerequisite-chips {
   display: flex;

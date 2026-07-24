@@ -17,6 +17,7 @@ class ChatRequest(BaseModel):
     message: str
     block_slug: str | None = None
     history: list[dict[str, str]] = []
+    memory_summary: str | None = None
 
 
 class ChatResponse(BaseModel):
@@ -59,6 +60,17 @@ async def chat(request: ChatRequest):
     # Build system prompt: base Socratic prompt + block-specific context
     block_context = get_block_context(request.block_slug or "")
     system_prompt = get_system_prompt(block_context)
+
+    # Add cross-session memory summary if provided
+    if request.memory_summary:
+        system_prompt += (
+            "\n\n## Cross-Session Memory\n"
+            "The student has previously mastered these blocks:\n"
+            f"{request.memory_summary}\n\n"
+            "They do NOT need prerequisite re-checking for these mastered blocks. "
+            "If any of these blocks are prerequisites for the current topic, "
+            "assume the student already understands them and proceed directly."
+        )
 
     # Build conversation history
     messages = list(request.history)

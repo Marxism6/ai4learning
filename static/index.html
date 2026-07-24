@@ -39,13 +39,13 @@
   <div class="settings-overlay" id="settingsOverlay" style="display:none;">
     <div class="settings-card">
       <div class="settings-title" data-i18n="settingsTitle">设置（Settings）</div>
-      <label class="settings-label">API Key</label>
+      <label class="settings-label" data-i18n="apiKeyLabel">API Key</label>
       <input type="password" class="settings-input" id="apiKeyInput" placeholder="sk-...">
       <label class="settings-label" data-i18n="modelLabel">模型（Model）</label>
       <input type="text" class="settings-input" id="modelInput" list="modelList" placeholder="gpt-4o">
       <datalist id="modelList"></datalist>
       <button class="btn-secondary btn-sm" id="detectModels" data-i18n="detectModels">检测可用模型</button>
-      <label class="settings-label">API 地址（Base URL）</label>
+      <label class="settings-label" data-i18n="apiBaseLabel">API 地址（Base URL）</label>
       <input type="text" class="settings-input" id="apiBaseInput" placeholder="https://api.openai.com/v1">
       <div class="settings-actions">
         <button class="btn-primary" id="settingsSave" data-i18n="settingsSave">保存</button>
@@ -65,23 +65,23 @@
       <span class="nav-user" id="navUser"></span>
       <span class="progress-indicator" id="progressIndicator" style="display:none;">0/0</span>
       <button class="btn-new-conv" id="newConvButton" title="New Conversation" data-i18n="newConv" style="display:none;">+ NEW</button>
-      <label class="memory-toggle" id="memoryToggle" title="Cross-session memory">
+      <label class="memory-toggle" id="memoryToggle" data-i18n-title="memTitle" title="Cross-session memory">
         <span class="memory-label" data-i18n="memLabel">MEM</span>
         <span class="memory-slider" id="memorySlider"></span>
       </label>
-      <button class="lang-toggle" id="langToggle" title="Switch language">
+      <button class="lang-toggle" id="langToggle" data-i18n-title="langTitle" title="Switch language">
         <span class="lang-option active">中</span>
         <span class="lang-option">EN</span>
       </button>
-      <button class="btn-settings" id="settingsButton" title="Settings">
+      <button class="btn-settings" id="settingsButton" data-i18n-title="settingsTitle" title="Settings">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="3"></circle>
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
         </svg>
       </button>
-      <button class="mode-toggle" id="modeToggle" title="Toggle color mode">
-        <span class="mode-option active">EYE</span>
-        <span class="mode-option">STD</span>
+      <button class="mode-toggle" id="modeToggle" data-i18n-title="modeTitle" title="Toggle color mode">
+        <span class="mode-option active" data-mode="eye-protection" data-i18n="modeEye">EYE</span>
+        <span class="mode-option" data-mode="standard" data-i18n="modeStd">STD</span>
       </button>
     </div>
   </nav>

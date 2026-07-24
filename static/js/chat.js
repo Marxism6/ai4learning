@@ -46,6 +46,20 @@
       analyzingImg: '正在分析图片...',
       errorPrefix: '错误：',
       noKeyError: 'API Key 未配置。请在设置面板中输入 API Key。',
+      chartRenderError: '图表渲染错误',
+      fileTooLarge: '文件过大，最大 10 MB',
+      unsupportedFormat: '不支持的格式，请使用 PNG, JPG, WEBP',
+      assessmentFailed: '评估请求失败',
+      serverError: '服务器错误',
+      uploadFailed: '上传失败',
+      recognizedProblem: '题目识别结果',
+      apiKeyLabel: 'API Key（API 密钥）',
+      apiBaseLabel: 'API 地址（Base URL）',
+      modeEye: '护眼',
+      modeStd: '标准',
+      memTitle: '跨会话记忆',
+      langTitle: '切换语言',
+      modeTitle: '切换颜色模式',
     },
     en: {
       brand: 'NUMERICAL ANALYSIS TUTOR',
@@ -77,6 +91,20 @@
       analyzingImg: 'Analyzing image...',
       errorPrefix: 'Error: ',
       noKeyError: 'API Key not configured. Please enter your API Key in Settings.',
+      chartRenderError: 'Chart rendering error',
+      fileTooLarge: 'File too large. Max 10 MB.',
+      unsupportedFormat: 'Unsupported format. Use PNG, JPG, WEBP.',
+      assessmentFailed: 'Assessment failed',
+      serverError: 'Server error',
+      uploadFailed: 'Upload failed',
+      recognizedProblem: 'RECOGNIZED PROBLEM',
+      apiKeyLabel: 'API Key',
+      apiBaseLabel: 'API Base URL',
+      modeEye: 'EYE',
+      modeStd: 'STD',
+      memTitle: 'Cross-session memory',
+      langTitle: 'Switch language',
+      modeTitle: 'Toggle color mode',
     },
   };
 
@@ -515,7 +543,7 @@
           config.options.scales = { x: { grid: { color: inkMute + '22' }, ticks: { color: inkMute } }, y: { grid: { color: inkMute + '22' }, ticks: { color: inkMute } } };
         }
         new Chart(canvas, config);
-      } catch (e) { card.innerHTML = '<p class="error-message" style="padding: 12px;">Chart rendering error</p>'; }
+      } catch (e) { card.innerHTML = '<p class="error-message" style="padding: 12px;">' + escapeHtml(t('chartRenderError')) + '</p>'; }
     });
   }
 
@@ -698,7 +726,7 @@
           if (apiKeyInput) apiKeyInput.focus();
           return;
         }
-        throw new Error(errData.detail || 'Assessment failed: ' + res.status);
+        throw new Error(t('assessmentFailed') + ': ' + (errData.detail || res.status));
       }
       var data = await res.json();
       var reply = data.reply;
@@ -764,7 +792,7 @@
           if (apiKeyInput) apiKeyInput.focus();
           return;
         }
-        throw new Error(errData.detail || 'Server error: ' + res.status);
+        throw new Error(t('serverError') + ': ' + (errData.detail || res.status));
       }
 
       var data = await res.json();
@@ -815,9 +843,9 @@
     if (!file) return;
     fileInput.value = '';
     var maxSize = 10 * 1024 * 1024;
-    if (file.size > maxSize) { addErrorMessage(t('errorPrefix') + 'File too large. Max 10 MB.'); return; }
+    if (file.size > maxSize) { addErrorMessage(t('errorPrefix') + t('fileTooLarge')); return; }
     var valid = ['image/png', 'image/jpeg', 'image/webp'];
-    if (valid.indexOf(file.type) === -1) { addErrorMessage(t('errorPrefix') + 'Unsupported format. Use PNG, JPG, WEBP.'); return; }
+    if (valid.indexOf(file.type) === -1) { addErrorMessage(t('errorPrefix') + t('unsupportedFormat')); return; }
     if (state.isLoading) return;
     state.isLoading = true;
     inputField.disabled = true;
@@ -851,7 +879,7 @@
 
       if (!res.ok) {
         var errData2 = await res.json().catch(function () { return {}; });
-        throw new Error(errData2.detail || 'Upload failed: ' + res.status);
+        throw new Error(t('uploadFailed') + ': ' + (errData2.detail || res.status));
       }
 
       var data = await res.json();
@@ -861,7 +889,7 @@
       problemMsg.style.animation = 'none';
       var pc = document.createElement('div');
       pc.className = 'message-content';
-      pc.innerHTML = '<div class="knowledge-tag" style="margin-bottom: 8px;">RECOGNIZED PROBLEM</div>';
+      pc.innerHTML = '<div class="knowledge-tag" style="margin-bottom: 8px;">' + escapeHtml(t('recognizedProblem')) + '</div>';
       var bd = document.createElement('div');
       bd.className = 'problem-body';
       bd.innerHTML = markdownToHtml(recognized);
@@ -934,7 +962,7 @@
     var next = cur === opts[0] ? opts[1] : opts[0];
     cur.classList.remove('active');
     next.classList.add('active');
-    var theme = next.textContent.trim() === 'EYE' ? 'eye-protection' : 'standard';
+    var theme = next.dataset.mode || 'eye-protection';
     state.theme = theme;
     document.documentElement.setAttribute('data-theme', theme);
     lsSet('theme', theme);

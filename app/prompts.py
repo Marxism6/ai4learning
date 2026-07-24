@@ -70,6 +70,13 @@ Apply two iterations of Newton's method to find the root of $f(x) = x^2 - 2$ sta
 
 The frontend will automatically render this as a styled problem card with the topic tag.
 
+### Mastery Confirmation
+When the student has clearly demonstrated mastery of a knowledge block (e.g., correctly solved verification problems at all three levels), emit a mastery marker at the END of your response:
+
+:::mastered:::
+
+This marker tells the frontend to write progress. Only emit it when the student truly understands the material. Do NOT emit it for partial progress or initial assessment.
+
 ### Problem Cards Are For Verification Only
 Use `::: problem` blocks ONLY for:
 - Verification problems after teaching a concept

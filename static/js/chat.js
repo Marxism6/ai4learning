@@ -234,6 +234,9 @@
   }
 
   function markdownToHtml(markdown) {
+    // Strip mastery confirmation markers before other parsing
+    markdown = markdown.replace(/:::\s*mastered\s*:::/gi, '');
+
     const displayMathBlocks = [];
     let processed = markdown.replace(/\$\$([\s\S]*?)\$\$/g, function (_, math) {
       const idx = displayMathBlocks.length;
@@ -346,6 +349,31 @@
   /**
    * *Prerequisite chips removed per spec — LLM determines prerequisites dynamically.*
    */
+
+  // === Progress Writing ===
+
+  /**
+   * POST progress update to the server and refresh the UI.
+   */
+  async function writeProgress(blockSlug, status, masteryLevel) {
+    if (!state.username) return;
+    try {
+      var body = { block_slug: blockSlug };
+      if (status) body.status = status;
+      if (masteryLevel != null) body.mastery_level = masteryLevel;
+
+      var response = await fetch('/api/progress/' + encodeURIComponent(state.username), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) return;
+      state.progress = await response.json();
+      updateProgressUI();
+    } catch (err) {
+      console.error('Failed to write progress:', err);
+    }
+  }
 
   // === Message Rendering ===
 
@@ -555,6 +583,19 @@
 
       // Save session after each exchange
       saveSession();
+
+      // Detect mastery confirmation and write progress
+      if (state.blockSlug) {
+        // Mark block as in-progress after first interaction
+        if (state.history.filter(function (m) { return m.role === 'user'; }).length === 1) {
+          writeProgress(state.blockSlug, 'in-progress');
+        }
+
+        // Detect :::mastered::: marker in agent reply → mark mastered
+        if (reply.indexOf(':::mastered:::') !== -1) {
+          writeProgress(state.blockSlug, 'mastered', 3);
+        }
+      }
     } catch (err) {
       setTypingIndicator(false);
       addErrorMessage('Error: ' + err.message);

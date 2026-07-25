@@ -1,0 +1,27 @@
+{
+  "name": "107competition",
+  "version": "1.0.0",
+  "description": "苏格拉底式数值分析学习工具。通过引导式对话帮助大学生掌握计算方法（Numerical Analysis）的核心知识，而不是直接给出答案。",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "node --test tests/js/nat-*.test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Marxism6/ai4learning.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Marxism6/ai4learning/issues"
+  },
+  "homepage": "https://github.com/Marxism6/ai4learning#readme",
+  "devDependencies": {
+    "jsdom": "^29.1.1"
+  }
+}

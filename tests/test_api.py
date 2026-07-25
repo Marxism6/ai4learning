@@ -67,7 +67,7 @@ async def test_static_css_served(client):
 @pytest.mark.anyio
 async def test_static_js_served(client):
     """Static JS is accessible."""
-    response = await client.get("/static/js/chat.js")
+    response = await client.get("/static/js/nat.js")
     assert response.status_code == 200
     assert "javascript" in response.headers["content-type"]
 

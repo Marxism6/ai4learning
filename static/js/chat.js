@@ -121,6 +121,7 @@
     // Re-render block context
     var ctx=conversation.querySelector('[data-message="context"]');
     if(ctx&&state.blockSlug&&state.blocks&&state.blocks[state.blockSlug]){ctx.remove();addBlockContextMessage(state.blocks[state.blockSlug]);}
+    updateBlockSelectorLabel();
   }
 
   // === Settings panel — new controls moved from nav ===

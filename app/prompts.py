@@ -96,7 +96,25 @@ The JSON must have `type` (chart type: "line", "bar", "scatter") and `data` with
 The frontend renders this with Chart.js using the design system teal accent color.
 
 Use charts sparingly — only when a visual would genuinely aid understanding
-(e.g., Newton convergence, interpolation error decay, Runge's phenomenon)."""
+(e.g., Newton convergence, interpolation error decay, Runge's phenomenon).
+
+### Multiple Choice Problems
+When the student asks you to convert a problem into multiple choice (e.g., "改成选择题", "make it multiple choice", "出选择题"), wrap it in a `::: choice` block:
+
+::: choice
+**Question text with $formulas$**
+A. First option
+B. Second option
+C. Third option
+D. Fourth option
+:::
+
+Rules for multiple choice:
+- Exactly 4 options labeled A-D, one per line, prefixed with "A. ", "B. ", etc.
+- Only ONE correct answer. Do NOT reveal which one is correct.
+- Options should be plausible (include common mistakes as distractors).
+- The question line (first line) may contain bold and inline math.
+- After the student picks an option, explain why it is correct or incorrect using Socratic dialogue."""
 
 # === Language Instructions ===
 

@@ -524,6 +524,83 @@ body {
   cursor: not-allowed;
 }
 
+/* === Math Keyboard Button === */
+.btn-math {
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: none; color: var(--ink-mute); cursor: pointer;
+  border-radius: 9999px; flex-shrink: 0;
+  transition: background-color 100ms ease, color 100ms ease;
+}
+.btn-math:hover { background: var(--canvas-inset); color: var(--accent); }
+
+/* === Math Palette === */
+.math-palette {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0; right: 0;
+  background: var(--canvas-elevated);
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  padding: 12px;
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 100;
+}
+
+.math-palette-group { margin-bottom: 6px; }
+.math-palette-title { font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--ink-mute); margin: 6px 0 6px; font-family: var(--font-sans); }
+.math-palette-grid { display: flex; flex-wrap: wrap; gap: 4px; }
+.math-sym-btn {
+  min-width: 36px; height: 32px; padding: 0 8px;
+  background: var(--canvas-inset); border: 1px solid var(--hairline);
+  border-radius: 4px; color: var(--ink);
+  font-size: 15px; cursor: pointer; font-family: var(--font-sans);
+  line-height: 1; transition: border-color 100ms ease, background-color 100ms ease;
+}
+.math-sym-btn:hover { background: var(--accent-soft); border-color: var(--accent); }
+
+/* === Input Preview === */
+.input-preview {
+  padding: 8px 16px;
+  background: var(--canvas-elevated);
+  border: 1px solid var(--hairline);
+  border-bottom: none;
+  border-radius: 10px 10px 0 0;
+  font-size: 15px;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  min-height: 36px;
+}
+
+/* === Choice Card === */
+.choice-card {
+  background: var(--canvas-elevated);
+  border: 1px solid var(--hairline-strong);
+  border-radius: 10px;
+  padding: 20px 24px;
+  margin: 8px 0;
+}
+.choice-question { font-size: 17px; font-weight: 540; margin-bottom: 14px; color: var(--ink); line-height: 1.5; }
+.choice-options { display: flex; flex-direction: column; gap: 8px; }
+.choice-option {
+  display: flex; align-items: center; gap: 12px; text-align: left;
+  padding: 12px 16px; background: var(--canvas); border: 1px solid var(--hairline);
+  border-radius: 10px; cursor: pointer; font-family: var(--font-sans);
+  font-size: 15px; color: var(--ink); transition: border-color 0.15s, background-color 0.15s;
+  line-height: 1.4;
+}
+.choice-option:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
+.choice-option:disabled { cursor: default; opacity: 0.7; }
+.choice-option.selected { border-color: var(--accent); background: var(--accent-soft); }
+.choice-label {
+  width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+  background: var(--accent); color: var(--on-accent); border-radius: 9999px;
+  font-weight: 600; font-size: 13px; flex-shrink: 0;
+}
+.choice-text { flex: 1; }
+
 /* === Upload Button === */
 .btn-upload {
   width: 36px;

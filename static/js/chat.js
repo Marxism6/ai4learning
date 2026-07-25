@@ -22,13 +22,15 @@
       detectModelsDone:function(n){return'已找到 '+n+' 个模型';}, detectModelsFail:'检测失败',
       analyzingImg:'正在分析图片...', errorPrefix:'错误：',
       noKeyError:'API Key 未配置。请在设置面板中输入 API Key。',
+      mathKeyboardTitle:'数学键盘', mathGreek:'希腊字母', mathOps:'运算符',
+      choiceIChoose:'我选',
       chartRenderError:'图表渲染错误', fileTooLarge:'文件过大，最大 10 MB',
       unsupportedFormat:'不支持的格式，请使用 PNG, JPG, WEBP',
       assessmentFailed:'评估请求失败', serverError:'服务器错误', uploadFailed:'上传失败',
       recognizedProblem:'题目识别结果',
       apiKeyLabel:'API Key', apiBaseLabel:'API 地址', modeEye:'护眼', modeStd:'标准',
       memTitle:'跨会话记忆', langTitle:'切换语言', modeTitle:'切换颜色模式',
-      langLabel:'语言', themeLabel:'主题', historyTitle:'历史对话',
+      langLabel:'语言', themeLabel:'主题', historyTitle:'历史对话（点击继续）',
       historyButtonTitle:'历史记录', clearHistory:'清空历史', confirmClear:'确定清空所有历史吗？',
       viewingHistory:'正在查看历史对话', backToCurrent:'返回当前对话', emptyHistory:'暂无历史对话',
       historyPreview:'{n} 条消息 - {preview}...',
@@ -48,13 +50,15 @@
       detectModelsDone:function(n){return n+' models found';}, detectModelsFail:'Detection failed',
       analyzingImg:'Analyzing image...', errorPrefix:'Error: ',
       noKeyError:'API Key not configured. Please enter your API Key in Settings.',
+      mathKeyboardTitle:'Math keyboard', mathGreek:'Greek', mathOps:'Operators',
+      choiceIChoose:'I choose',
       chartRenderError:'Chart rendering error', fileTooLarge:'File too large. Max 10 MB.',
       unsupportedFormat:'Unsupported format. Use PNG, JPG, WEBP.',
       assessmentFailed:'Assessment failed', serverError:'Server error', uploadFailed:'Upload failed',
       recognizedProblem:'RECOGNIZED PROBLEM',
       apiKeyLabel:'API Key', apiBaseLabel:'API Base URL', modeEye:'EYE', modeStd:'STD',
       memTitle:'Cross-session memory', langTitle:'Switch language', modeTitle:'Toggle color mode',
-      langLabel:'Language', themeLabel:'Theme', historyTitle:'Conversation History',
+      langLabel:'Language', themeLabel:'Theme', historyTitle:'History (click to resume)',
       historyButtonTitle:'History', clearHistory:'Clear History', confirmClear:'Clear all history?',
       viewingHistory:'Viewing history', backToCurrent:'Back to current', emptyHistory:'No history',
       historyPreview:'{n} messages - {preview}...',
@@ -91,7 +95,9 @@
       historyOverlay=document.getElementById('historyOverlay'), historyList=document.getElementById('historyList'),
       historyButton=document.getElementById('historyButton'), historyClose=document.getElementById('historyClose'),
       clearHistoryBtn=document.getElementById('clearHistoryBtn'), historyViewBar=document.getElementById('historyViewBar'),
-      historyBackBtn=document.getElementById('historyBackBtn');
+      historyBackBtn=document.getElementById('historyBackBtn'),
+      mathKeyboardBtn=document.getElementById('mathKeyboardBtn'), mathPalette=document.getElementById('mathPalette'),
+      inputPreview=document.getElementById('inputPreview');
 
   // === i18n ===
   function t(k){return I18N[state.lang][k]||k;}
@@ -229,25 +235,27 @@
   }
 
   function viewHistory(entry){
-    state.viewingHistory=true;closeHistory();
-    conversation.innerHTML='';var w=conversation.querySelector('[data-message="welcome"]');if(w)w.style.display='none';
-    entry.history.forEach(function(m){
+    closeHistory();
+    // Load entry as active session, remove from archive
+    state.history=entry.history.slice();
+    state.blockSlug=entry.blockSlug||null;
+    state.viewingHistory=false;
+    var key='history-'+state.username;
+    var list=lsGetJSON(key,[]).filter(function(e){return e.id!==entry.id;});
+    lsSetJSON(key,list);
+    // Re-render conversation
+    conversation.querySelectorAll('.message').forEach(function(el){if(el.dataset.message!=='welcome')el.remove();});
+    var w=conversation.querySelector('[data-message="welcome"]');if(w)w.style.display='none';
+    state.history.forEach(function(m){
       if(m.role==='user')addUserMessage(m.content,true);
       else if(m.role==='assistant')addAgentMessage(markdownToHtml(m.content),true);
     });
-    inputField.disabled=true;sendButton.disabled=true;uploadButton.disabled=true;
-    historyViewBar.style.display='flex';scrollToBottom();
-  }
-
-  function exitHistoryView(){
-    state.viewingHistory=false;conversation.innerHTML='';
     inputField.disabled=false;sendButton.disabled=false;uploadButton.disabled=false;
     historyViewBar.style.display='none';
-    var restored=restoreSession();
-    if(!restored){var w=conversation.querySelector('[data-message="welcome"]');if(w)w.style.display='';}
+    updateBlockSelectorLabel();saveSession();scrollToBottom();inputField.focus();
   }
 
-  historyBackBtn.addEventListener('click',exitHistoryView);
+  // exitHistoryView removed — history entries now load as active sessions
   clearHistoryBtn.addEventListener('click',function(){
     if(!confirm(t('confirmClear')))return;
     lsRemove('history-'+state.username);renderHistoryList();
@@ -255,7 +263,9 @@
 
   function newConversation(){
     archiveCurrentSession();
-    state.history=[];state.blockSlug=null;state.memoryInjected=false;
+    state.history=[];state.blockSlug=null;state.memoryInjected=false;state.viewingHistory=false;
+    inputField.disabled=false;sendButton.disabled=false;uploadButton.disabled=false;
+    historyViewBar.style.display='none';
     saveSession();lsRemove('session-'+state.username);
     conversation.querySelectorAll('.message').forEach(function(el){if(el.dataset.message!=='welcome')el.remove();});
     var w=conversation.querySelector('[data-message="welcome"]');if(w)w.style.display='';
@@ -310,11 +320,68 @@
   }
   var chartCounter=0;
 
+  // === Math Keyboard ===
+  var MATH_SYMBOLS = {
+    greek:['α','β','γ','δ','ε','ζ','η','θ','λ','μ','π','ρ','σ','τ','φ','ω','Γ','Δ','Θ','Λ','Π','Σ','Φ','Ψ','Ω'],
+    operators:['±','×','÷','√','∞','≈','≠','≤','≥','∝','∂','∇','∫','∑','∏','∈','⊂','∪','∩','→','⇒','↔'],
+    latex:[
+      {label:'x²',insert:'$x^2$'},{label:'xᵢ',insert:'$x_i$'},{label:'a/b',insert:'$\\\\frac{a}{b}$'},
+      {label:'∫ᵃᵇ',insert:'$\\\\int_a^b f(x)\\\\,dx$'},{label:'Σ',insert:'$\\\\sum_{i=1}^{n}$'},
+      {label:'lim',insert:'$\\\\lim_{x \\\\to a}$'},{label:'√x',insert:'$\\\\sqrt{x}$'},
+      {label:'矩阵',insert:'$$\\\\begin{pmatrix} a & b \\\\\\\\ c & d \\\\end{pmatrix}$$'},
+      {label:"f'(x)",insert:"$f'(x)$"},{label:'eˣ',insert:'$e^x$'},
+    ],
+  };
+
+  function renderMathPalette(){
+    mathPalette.innerHTML='';
+    var groups=[
+      {title:t('mathGreek'), items:MATH_SYMBOLS.greek.map(function(s){return{label:s,insert:s};})},
+      {title:t('mathOps'), items:MATH_SYMBOLS.operators.map(function(s){return{label:s,insert:s};})},
+      {title:'LaTeX', items:MATH_SYMBOLS.latex},
+    ];
+    groups.forEach(function(g){
+      var sec=document.createElement('div');sec.className='math-palette-group';
+      sec.innerHTML='<div class="math-palette-title">'+escapeHtml(g.title)+'</div>';
+      var grid=document.createElement('div');grid.className='math-palette-grid';
+      g.items.forEach(function(item){
+        var btn=document.createElement('button');btn.className='math-sym-btn';btn.textContent=item.label;
+        btn.addEventListener('click',function(){insertAtCursor(item.insert);});
+        grid.appendChild(btn);
+      });
+      sec.appendChild(grid);mathPalette.appendChild(sec);
+    });
+  }
+
+  function insertAtCursor(text){
+    var start=inputField.selectionStart,end=inputField.selectionEnd,val=inputField.value;
+    inputField.value=val.slice(0,start)+text+val.slice(end);
+    inputField.selectionStart=inputField.selectionEnd=start+text.length;
+    inputField.focus();updateInputPreview();closeMathPalette();
+  }
+
+  function toggleMathPalette(){
+    if(mathPalette.style.display==='block'){mathPalette.style.display='none';return;}
+    renderMathPalette();mathPalette.style.display='block';
+  }
+  function closeMathPalette(){mathPalette.style.display='none';}
+
+  mathKeyboardBtn.addEventListener('click',function(e){e.stopPropagation();toggleMathPalette();});
+  document.addEventListener('click',function(e){if(e.target!==mathKeyboardBtn&&!mathPalette.contains(e.target))closeMathPalette();});
+
+  function updateInputPreview(){
+    var val=inputField.value;
+    if(/\$|\*\*/.test(val)){inputPreview.innerHTML=renderInline(val);inputPreview.style.display='';}
+    else{inputPreview.style.display='none';}
+  }
+  inputField.addEventListener('input',updateInputPreview);
+
   function markdownToHtml(md){
     md=md.replace(MASTERED_MARKER_RE_G,'');
     var mathB=[];var proc=md.replace(/\$\$([\s\S]*?)\$\$/g,function(_,m){var i=mathB.length;mathB.push(m.trim());return'\x00MATH'+i+'\x00';});
     var probB=[];proc=proc.replace(/::: problem\s*\n([\s\S]*?):::/g,function(_,c){var i=probB.length;probB.push(c.trim());return'\x00PROB'+i+'\x00';});
     var chartB=[];proc=proc.replace(/:::chart\{(.+?)\}:::/g,function(_,j){var i=chartB.length;chartB.push(j);return'\x00CHART'+i+'\x00';});
+    var choiceB=[];proc=proc.replace(/::: choice\s*\n([\s\S]*?):::/g,function(_,c){var i=choiceB.length;choiceB.push(c.trim());return'\x00CHOICE'+i+'\x00';});
     var lines=proc.split('\n'),html=[],inL=false;
     for(var i=0;i<lines.length;i++){var tr=lines[i].trim();if(!tr){if(inL){html.push('</ul>');inL=false;}continue;}
       if(tr.match(/^[-*+]\s+/)){if(!inL){html.push('<ul>');inL=true;}html.push('<li>'+renderInline(tr.replace(/^[-*+]\s+/,''))+'</li>');continue;}
@@ -325,6 +392,7 @@
     h=h.replace(/\x00MATH(\d+)\x00/g,function(_,i){var m=mathB[parseInt(i)],r=tryRenderLatex(m,true);return'<div class="formula-card">'+(r||escapeHtml('$$'+m+'$$'))+'</div>';});
     h=h.replace(/\x00PROB(\d+)\x00/g,function(_,i){var c=probB[parseInt(i)],ls=c.split('\n'),hd=ls[0].trim(),bd=ls.slice(1).filter(function(l){return l.trim();}),tag='',mm=hd.match(/^\*\*(.+?)\*\*/);if(mm)tag=mm[1];var bH=bd.map(function(l){return'<p>'+renderInlineMath(l)+'</p>';}).join('\n');var hH=renderInlineMath(hd);return'<div class="problem-card" data-problem="">'+(tag?'<div class="problem-tag">'+escapeHtml(tag)+'</div>':'')+'<div class="problem-body">'+(tag?'':'<p>'+hH+'</p>')+bH+'</div></div>';});
     h=h.replace(/\x00CHART(\d+)\x00/g,function(_,i){var cid='chart-'+(++chartCounter),js=chartB[parseInt(i)];return'<div class="formula-card chart-card" data-chart="'+escapeHtml(js)+'" id="'+cid+'"><canvas></canvas></div>';});
+    h=h.replace(/\x00CHOICE(\d+)\x00/g,function(_,i){var raw=choiceB[parseInt(i)],restored=raw.replace(/\x00MATH(\d+)\x00/g,function(_,mi){var m=mathB[parseInt(mi)],r=tryRenderLatex(m,true);return r||escapeHtml('$$'+m+'$$');}),ls=restored.split('\n').filter(function(l){return l.trim();}),q=ls[0],opts=ls.slice(1).filter(function(l){return/^[A-D]\.\s+/.test(l.trim());}),qH=renderInline(q),optH=opts.map(function(o){var l=o.trim().match(/^([A-D])\.\s+/)[1],t=o.trim().replace(/^[A-D]\.\s+/,'');return'<button class="choice-option" data-choice="'+l+'"><span class="choice-label">'+l+'</span><span class="choice-text">'+renderInline(t)+'</span></button>';}).join('');return'<div class="choice-card"><div class="choice-question">'+qH+'</div><div class="choice-options">'+optH+'</div></div>';});
     return h;
   }
 
@@ -396,6 +464,16 @@
     }catch(err){setTypingIndicator(false);addErrorMessage(t('errorPrefix')+err.message);if(err.message.indexOf('API key')!==-1)openSettings();}
     finally{state.isLoading=false;inputField.disabled=false;sendButton.disabled=false;inputField.focus();scrollToBottom();}
   }
+
+  // === Choice Click Handler ===
+  conversation.addEventListener('click',function(e){
+    var btn=e.target.closest('.choice-option');
+    if(!btn||state.isLoading)return;
+    var label=btn.dataset.choice;
+    var card=btn.closest('.choice-card');
+    card.querySelectorAll('.choice-option').forEach(function(o){o.disabled=true;if(o===btn)o.classList.add('selected');});
+    sendMessage(t('choiceIChoose')+' '+label);
+  });
 
   // === Events ===
   function handleSend(){var m=inputField.value.trim();if(!m||state.isLoading)return;inputField.value='';sendMessage(m);}

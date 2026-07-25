@@ -35,6 +35,7 @@
       viewingHistory:'正在查看历史对话', backToCurrent:'返回当前对话', emptyHistory:'暂无历史对话',
       historyPreview:function(n,p){return n+' 条消息 - '+p+'...';},
       invalidUsername:'用户名只能包含中英文、数字、空格和 . _ -',
+      emptyUsername:'请输入用户名',
     },
     en: {
       brand:'NUMERICAL ANALYSIS TUTOR', chatTab:'CHAT',
@@ -64,6 +65,7 @@
       viewingHistory:'Viewing history', backToCurrent:'Back to current', emptyHistory:'No history',
       historyPreview:function(n,p){return n+' messages - '+p+'...';},
       invalidUsername:'Username may only contain letters, digits, spaces, and . _ -',
+      emptyUsername:'Please enter a username',
     },
   };
 
@@ -527,7 +529,7 @@
   // === Username ===
   function hideOverlay(){overlay.classList.add('hidden');setTimeout(function(){inputField.focus();},250);}
   function onUserLogin(name){state.username=name;navUser.textContent=name;lsSet('username',name);hideOverlay();loadBlocks();loadProgress();restoreSession();newConvButton.style.display='';}
-  usernameForm.addEventListener('submit',function(e){e.preventDefault();usernameError.style.display='none';var n=usernameInput.value.trim();if(!n)return;if(!USERNAME_RE.test(n)){usernameError.textContent=t('invalidUsername');usernameError.style.display='';return;}onUserLogin(n);});
+  usernameForm.addEventListener('submit',function(e){e.preventDefault();usernameError.style.display='none';var n=usernameInput.value.trim();if(!n){usernameError.textContent=t('emptyUsername');usernameError.style.display='';return;}if(!USERNAME_RE.test(n)){usernameError.textContent=t('invalidUsername');usernameError.style.display='';return;}onUserLogin(n);});
 
   // === Init ===
   var savedTheme=lsGet('theme','eye-protection');

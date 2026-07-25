@@ -477,11 +477,11 @@
     try{
       var body={username:state.username,message:message,block_slug:state.blockSlug,history:state.history.slice(0,-1),lang:state.lang};if(mem)body.memory_summary=mem;
       var r=await fetch('/api/chat',{method:'POST',headers:buildApiHeaders({}),body:JSON.stringify(body)});
-      if(!r.ok){var ed=await r.json().catch(function(){return{};});if(r.status===502&&ed.detail&&isApiKeyError(ed.detail)){addErrorMessage(t('noKeyError'));openSettings();if(apiKeyInput)apiKeyInput.focus();return;}throw new Error(t('serverError')+': '+(ed.detail||r.status));}
+      if(!r.ok){var ed=await r.json().catch(function(){return{};});if(r.status===502&&ed.detail&&isApiKeyError(ed.detail)){state.history.pop();addErrorMessage(t('noKeyError'));openSettings();if(apiKeyInput)apiKeyInput.focus();return;}throw new Error(t('serverError')+': '+(ed.detail||r.status));}
       var data=await r.json(),reply=data.reply;setTypingIndicator(false);
       var html=markdownToHtml(reply);addAgentMessage(html);state.history.push({role:'assistant',content:reply});saveSession();initCharts();
       if(state.blockSlug){if(state.history.filter(function(m){return m.role==='user';}).length===1)writeProgress(state.blockSlug,'in-progress');if(MASTERED_MARKER_RE.test(reply))writeProgress(state.blockSlug,'mastered',3);}
-    }catch(err){setTypingIndicator(false);addErrorMessage(t('errorPrefix')+err.message);if(isApiKeyError(err.message))openSettings();}
+    }catch(err){setTypingIndicator(false);state.history.pop();addErrorMessage(t('errorPrefix')+err.message);if(isApiKeyError(err.message))openSettings();}
     finally{state.isLoading=false;inputField.disabled=false;sendButton.disabled=false;inputField.focus();scrollToBottom();}
   }
 

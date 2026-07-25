@@ -333,24 +333,33 @@
     ],
   };
 
+  var mathPaletteTab='greek';
+
   function renderMathPalette(){
     mathPalette.innerHTML='';
     var groups=[
-      {title:t('mathGreek'), items:MATH_SYMBOLS.greek.map(function(s){return{label:s,insert:s};})},
-      {title:t('mathOps'), items:MATH_SYMBOLS.operators.map(function(s){return{label:s,insert:s};})},
-      {title:'LaTeX', items:MATH_SYMBOLS.latex},
+      {key:'greek',title:t('mathGreek'), items:MATH_SYMBOLS.greek.map(function(s){return{label:s,insert:s};})},
+      {key:'ops',title:t('mathOps'), items:MATH_SYMBOLS.operators.map(function(s){return{label:s,insert:s};})},
+      {key:'latex',title:'LaTeX', items:MATH_SYMBOLS.latex},
     ];
+    // Tab bar
+    var tabBar=document.createElement('div');tabBar.className='math-palette-tabs';
     groups.forEach(function(g){
-      var sec=document.createElement('div');sec.className='math-palette-group';
-      sec.innerHTML='<div class="math-palette-title">'+escapeHtml(g.title)+'</div>';
-      var grid=document.createElement('div');grid.className='math-palette-grid';
-      g.items.forEach(function(item){
-        var btn=document.createElement('button');btn.className='math-sym-btn';btn.textContent=item.label;
-        btn.addEventListener('click',function(){insertAtCursor(item.insert);});
-        grid.appendChild(btn);
-      });
-      sec.appendChild(grid);mathPalette.appendChild(sec);
+      var tab=document.createElement('button');tab.className='math-palette-tab'+(mathPaletteTab===g.key?' active':'');
+      tab.textContent=g.title;
+      tab.addEventListener('click',function(){mathPaletteTab=g.key;renderMathPalette();});
+      tabBar.appendChild(tab);
     });
+    mathPalette.appendChild(tabBar);
+    // Only render active group
+    var active=groups.filter(function(g){return g.key===mathPaletteTab;})[0];
+    var grid=document.createElement('div');grid.className='math-palette-grid';
+    active.items.forEach(function(item){
+      var btn=document.createElement('button');btn.className='math-sym-btn';btn.textContent=item.label;
+      btn.addEventListener('click',function(){insertAtCursor(item.insert);});
+      grid.appendChild(btn);
+    });
+    mathPalette.appendChild(grid);
   }
 
   function insertAtCursor(text){

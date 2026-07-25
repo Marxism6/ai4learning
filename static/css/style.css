@@ -544,14 +544,41 @@ body {
   border-radius: 10px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.12);
   padding: 12px;
-  max-height: 240px;
-  overflow-y: auto;
+  max-height: none;
+  overflow: visible;
   z-index: 100;
+  pointer-events: auto;
 }
 
 .math-palette-group { margin-bottom: 6px; }
 .math-palette-title { font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--ink-mute); margin: 6px 0 6px; font-family: var(--font-sans); }
 .math-palette-grid { display: flex; flex-wrap: wrap; gap: 4px; }
+
+.math-palette-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--hairline);
+  padding-bottom: 8px;
+}
+.math-palette-tab {
+  padding: 6px 14px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--ink-mute);
+  font-size: 13px;
+  font-weight: 540;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: background-color 100ms ease, color 100ms ease;
+}
+.math-palette-tab:hover { background: var(--canvas-inset); color: var(--ink); }
+.math-palette-tab.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
 .math-sym-btn {
   min-width: 36px; height: 32px; padding: 0 8px;
   background: var(--canvas-inset); border: 1px solid var(--hairline);
@@ -572,6 +599,7 @@ body {
   color: var(--ink);
   font-family: var(--font-sans);
   min-height: 36px;
+  pointer-events: auto;
 }
 
 /* === Choice Card === */
@@ -1207,7 +1235,7 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: var(--canvas-inset);
+  background: rgba(255, 255, 255, 0.12);
   color: var(--nav-text);
   border: none;
   border-radius: 4px;

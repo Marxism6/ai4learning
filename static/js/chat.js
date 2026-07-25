@@ -165,7 +165,7 @@
   settingsOverlay.addEventListener('click',function(e){if(e.target===settingsOverlay)closeSettings();});
 
   // === History overlay ===
-  function openHistory(){closeSettings();historyOverlay.style.display='flex';renderHistoryList();}
+  function openHistory(){if(!state.username)return;closeSettings();historyOverlay.style.display='flex';renderHistoryList();}
   function closeHistory(){historyOverlay.style.display='none';}
   historyButton.addEventListener('click',openHistory);
   historyClose.addEventListener('click',closeHistory);
@@ -525,7 +525,7 @@
   newConvButton.addEventListener('click',newConversation);
 
   // === Blocks ===
-  async function loadBlocks(){try{var r=await fetch('/api/blocks');if(!r.ok)throw Error('Failed');state.blocks=await r.json();renderBlockMenu();renderBlockStatusChips();}catch(e){console.error('loadBlocks',e);}}
+  async function loadBlocks(){try{var r=await fetch('/api/blocks');if(!r.ok)throw Error('Failed');state.blocks=await r.json();renderBlockMenu();renderBlockStatusChips();updateBlockSelectorLabel();}catch(e){console.error('loadBlocks',e);}}
 
   // === Username ===
   function hideOverlay(){overlay.classList.add('hidden');setTimeout(function(){inputField.focus();},250);}

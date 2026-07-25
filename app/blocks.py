@@ -200,33 +200,17 @@ def get_block_context(slug: str | None, lang: str = "en") -> str:
     if block is None:
         return ""
 
-    if lang == "zh":
-        levels_text = "\n".join(
-            f"- Level {i+1}: {m}"
-            for i, m in enumerate(block.get("mastery_levels_zh", block["mastery_levels"]))
-        )
-        return f"""## Current Knowledge Block: {block['title_zh']}
-
-Topic: {block['topic_zh']}
-Description: {block['description_zh']}
-
-Mastery goals for this block:
-{levels_text}
-
-Always scope your teaching to this block. If the student asks about a different
-topic, gently redirect or note that it will be covered in another block.
-Start by assessing the student's current level before proceeding with new material."""
-
-    # English (default)
+    suf = "_zh" if lang == "zh" else ""
+    levels_key = f"mastery_levels{suf}"
     levels_text = "\n".join(
-        f"- Level {i+1}: {level}"
-        for i, level in enumerate(block["mastery_levels"])
+        f"- Level {i+1}: {m}"
+        for i, m in enumerate(block.get(levels_key, block["mastery_levels"]))
     )
 
-    return f"""## Current Knowledge Block: {block['title']}
+    return f"""## Current Knowledge Block: {block[f'title{suf}']}
 
-Topic: {block['topic']}
-Description: {block['description']}
+Topic: {block[f'topic{suf}']}
+Description: {block[f'description{suf}']}
 
 Mastery goals for this block:
 {levels_text}

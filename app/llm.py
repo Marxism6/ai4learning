@@ -79,6 +79,12 @@ class LLMClient:
             return f"{base}/chat/completions"
         return f"{base}/v1/chat/completions"
 
+    def _ensure_v1(self) -> None:
+        """Append /v1 to api_base if not already present."""
+        base = self.api_base.rstrip("/")
+        if not base.endswith("/v1"):
+            self.api_base = base + "/v1"
+
     async def _request(self, body: dict, timeout: float = 60.0) -> dict:
         """Single try/except block for all LLM API calls. Retries with /v1 on 404."""
         async with httpx.AsyncClient(timeout=timeout) as client:
@@ -88,7 +94,7 @@ class LLMClient:
                     logger.info("Got 404, retrying with /v1 prefix")
                     response = await client.post(self._url_v1, headers=self.headers, json=body)
                     if response.status_code != 404:
-                        self.api_base = self.api_base.rstrip("/") + "/v1"
+                        self._ensure_v1()
                         logger.info("Auto-corrected api_base to %s", self.api_base)
                 response.raise_for_status()
                 return response.json()
@@ -203,7 +209,7 @@ class LLMClient:
                     if "data" in data:
                         # Auto-correct api_base if /v1 variant worked
                         if url.endswith("/v1/models") and not self.api_base.endswith("/v1"):
-                            self.api_base = self.api_base.rstrip("/") + "/v1"
+                            self._ensure_v1()
                             logger.info("Auto-corrected api_base to %s", self.api_base)
                         return sorted(m["id"] for m in data["data"])
                 except (httpx.HTTPStatusError, httpx.TimeoutException, KeyError):

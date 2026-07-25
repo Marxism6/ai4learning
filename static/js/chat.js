@@ -9,7 +9,7 @@
 
   var I18N = {
     zh: {
-      brand:'数值分析辅导', chatTab:'对话', welcomeTitle:'欢迎使用数值分析辅导工具',
+      pageTitle:'数值分析辅导', brand:'数值分析辅导', chatTab:'对话', welcomeTitle:'欢迎使用数值分析辅导工具',
       welcomeBody:'我将通过苏格拉底式引导帮助你掌握数值方法。从顶部选择一个知识块，或直接输入你的问题。',
       inputPlaceholder:'输入你的答案或问题...', newConv:'+ 新对话', newConvTitle:'新对话',
       memLabel:'跨会话记忆', blockStatus:'学习进度', uploadTitle:'上传题目截图',
@@ -38,7 +38,7 @@
       emptyUsername:'请输入用户名',
     },
     en: {
-      brand:'NUMERICAL ANALYSIS TUTOR', chatTab:'CHAT',
+      pageTitle:'Numerical Analysis Tutor', brand:'NUMERICAL ANALYSIS TUTOR', chatTab:'CHAT',
       welcomeTitle:'Welcome to the Numerical Analysis Tutor',
       welcomeBody:"I'm here to help you master numerical methods through guided Socratic dialogue.",
       inputPlaceholder:'Type your answer or question...', newConv:'+ NEW', newConvTitle:'New Conversation',
@@ -157,7 +157,7 @@
   // === Settings panel core ===
   function loadSettings(){apiKeyInput.value=lsGet('api-key','');modelInput.value=lsGet('model','');apiBaseInput.value=lsGet('api-base','');}
   function saveSettings(){lsSet('api-key',apiKeyInput.value.trim());lsSet('model',modelInput.value.trim());lsSet('api-base',apiBaseInput.value.trim());}
-  function openSettings(){loadSettings();settingsOverlay.style.display='flex';syncSettingsLangUI();syncSettingsThemeUI();syncSettingsMemoryUI();if(apiKeyInput.value.trim()&&modelList.children.length===0)detectModelsBtn.click();}
+  function openSettings(){if(!state.username)return;loadSettings();closeHistory();settingsOverlay.style.display='flex';syncSettingsLangUI();syncSettingsThemeUI();syncSettingsMemoryUI();if(apiKeyInput.value.trim()&&modelList.children.length===0)detectModelsBtn.click();}
   function closeSettings(){settingsOverlay.style.display='none';}
   settingsButton.addEventListener('click',openSettings);
   settingsClose.addEventListener('click',closeSettings);
@@ -165,7 +165,7 @@
   settingsOverlay.addEventListener('click',function(e){if(e.target===settingsOverlay)closeSettings();});
 
   // === History overlay ===
-  function openHistory(){historyOverlay.style.display='flex';renderHistoryList();}
+  function openHistory(){closeSettings();historyOverlay.style.display='flex';renderHistoryList();}
   function closeHistory(){historyOverlay.style.display='none';}
   historyButton.addEventListener('click',openHistory);
   historyClose.addEventListener('click',closeHistory);
@@ -439,7 +439,7 @@
   async function writeProgress(slug,st,ml){if(!state.username)return;try{var b={block_slug:slug};if(st)b.status=st;if(ml!=null)b.mastery_level=ml;var r=await fetch('/api/progress/'+encodeURIComponent(state.username),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});if(!r.ok){console.warn('writeProgress status',r.status);return;}state.progress=await r.json();updateProgressUI();}catch(e){console.error('writeProgress',e);}}
 
   // === Messages ===
-  function addUserMessage(t,noAnimation){var m=document.createElement('div');m.className='message user-message';if(noAnimation)m.style.animation='none';var c=document.createElement('div');c.className='message-content';c.innerHTML='<p>'+escapeHtml(t)+'</p>';m.appendChild(c);conversation.appendChild(m);}
+  function addUserMessage(t,noAnimation){var m=document.createElement('div');m.className='message user-message';if(noAnimation)m.style.animation='none';var c=document.createElement('div');c.className='message-content';c.innerHTML='<p>'+escapeHtml(t)+'</p>';m.appendChild(c);conversation.appendChild(m);return m;}
   function addAgentMessage(html,noAnimation){var m=document.createElement('div');m.className='message agent-message';if(noAnimation)m.style.animation='none';var c=document.createElement('div');c.className='message-content';c.innerHTML=html;m.appendChild(c);conversation.appendChild(m);renderMathEl(c)}
   function setTypingIndicator(v){var ind=document.getElementById('typingIndicator');if(v){if(!ind){ind=document.createElement('div');ind.id='typingIndicator';ind.className='message agent-message';ind.style.animation='none';ind.innerHTML='<div class="message-content"><div class="typing-indicator"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div></div>';conversation.appendChild(ind);}}else{if(ind)ind.remove();}scrollToBottom();}
   function addErrorMessage(t){var m=document.createElement('div');m.className='message agent-message';var c=document.createElement('div');c.className='message-content';c.innerHTML='<p class="error-message">'+escapeHtml(t)+'</p>';m.appendChild(c);conversation.appendChild(m);scrollToBottom();}
@@ -473,16 +473,16 @@
   // === API ===
   async function sendMessage(message){
     if(state.isLoading)return;state.isLoading=true;inputField.disabled=true;sendButton.disabled=true;
-    addUserMessage(message);state.history.push({role:'user',content:message});scrollToBottom();setTypingIndicator(true);
+    var userEl=addUserMessage(message);state.history.push({role:'user',content:message});scrollToBottom();setTypingIndicator(true);
     var mem=maybeBuildMemory();
     try{
       var body={username:state.username,message:message,block_slug:state.blockSlug,history:state.history.slice(0,-1),lang:state.lang};if(mem)body.memory_summary=mem;
       var r=await fetch('/api/chat',{method:'POST',headers:buildApiHeaders({}),body:JSON.stringify(body)});
-      if(!r.ok){var ed=await r.json().catch(function(){return{};});if(r.status===502&&ed.detail&&isApiKeyError(ed.detail)){state.history.pop();addErrorMessage(t('noKeyError'));openSettings();if(apiKeyInput)apiKeyInput.focus();return;}throw new Error(t('serverError')+': '+(ed.detail||r.status));}
+      if(!r.ok){var ed=await r.json().catch(function(){return{};});if(r.status===502&&ed.detail&&isApiKeyError(ed.detail)){state.history.pop();if(userEl)userEl.remove();addErrorMessage(t('noKeyError'));openSettings();if(apiKeyInput)apiKeyInput.focus();return;}throw new Error(t('serverError')+': '+(ed.detail||r.status));}
       var data=await r.json(),reply=data.reply;setTypingIndicator(false);
       var html=markdownToHtml(reply);addAgentMessage(html);state.history.push({role:'assistant',content:reply});saveSession();initCharts();
       if(state.blockSlug){if(state.history.filter(function(m){return m.role==='user';}).length===1)writeProgress(state.blockSlug,'in-progress');if(MASTERED_MARKER_RE.test(reply))writeProgress(state.blockSlug,'mastered',3);}
-    }catch(err){setTypingIndicator(false);state.history.pop();addErrorMessage(t('errorPrefix')+err.message);if(isApiKeyError(err.message))openSettings();}
+    }catch(err){setTypingIndicator(false);state.history.pop();if(userEl)userEl.remove();addErrorMessage(t('errorPrefix')+err.message);if(isApiKeyError(err.message))openSettings();}
     finally{state.isLoading=false;inputField.disabled=false;sendButton.disabled=false;inputField.focus();scrollToBottom();}
   }
 

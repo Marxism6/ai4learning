@@ -187,6 +187,9 @@
 
   // === Helpers ===
   var USERNAME_RE=/^[\w\u4e00-\u9fa5 .\-]+$/;
+  function localName(b){return(state.lang==='zh'&&b.title_zh)?b.title_zh:b.title;}
+  function sortedBlocks(){return Object.values(state.blocks).sort(function(a,b){if(a.topic!==b.topic)return a.topic.localeCompare(b.topic);return a.title.localeCompare(b.title);});}
+  function maybeBuildMemory(){if(state.memoryEnabled&&!state.memoryInjected){var m=buildMemorySummary();if(m){state.memoryInjected=true;return m;}}return '';}
 
   // === Helpers ===
   function isApiKeyError(msg){return /api[_ ]?key/i.test(msg||'');}
@@ -218,7 +221,7 @@
     list.unshift({
       id:String(Date.now()),timestamp:new Date().toISOString(),
       blockSlug:state.blockSlug,
-      blockTitle:block?(state.lang==='zh'&&block.title_zh?block.title_zh:block.title):t('chatTab'),
+      blockTitle:block?localName(block):t('chatTab'),
       messageCount:state.history.length,preview:preview,history:state.history,
     });
     if(list.length>50)list=list.slice(0,50);lsSetJSON(key,list);
@@ -294,11 +297,10 @@
     chatItem.textContent=t('chatTab');
     chatItem.addEventListener('click',function(){selectBlock(null);closeBlockMenu();});
     blockSelectorMenu.appendChild(chatItem);
-    var sorted=Object.values(state.blocks).sort(function(a,b){if(a.topic!==b.topic)return a.topic.localeCompare(b.topic);return a.title.localeCompare(b.title);});
-    sorted.forEach(function(block){
+    sortedBlocks().forEach(function(block){
       var item=document.createElement('button');
       item.className='block-menu-item'+(state.blockSlug===block.slug?' active':'');
-      var name=(state.lang==='zh'&&block.title_zh)?block.title_zh:block.title;
+      var name=localName(block);
       item.textContent=name;
       item.addEventListener('click',function(){selectBlock(block.slug);closeBlockMenu();});
       blockSelectorMenu.appendChild(item);
@@ -313,7 +315,7 @@
   function updateBlockSelectorLabel(){
     if(!state.blockSlug||!state.blocks||!state.blocks[state.blockSlug]){blockSelectorLabel.textContent=t('chatTab');return;}
     var block=state.blocks[state.blockSlug];
-    blockSelectorLabel.textContent=(state.lang==='zh'&&block.title_zh)?block.title_zh:block.title;
+    blockSelectorLabel.textContent=localName(block);
   }
 
   // === LaTeX ===
@@ -417,11 +419,10 @@
 
   function renderBlockStatusChips(){
     if(!state.progress||!state.blocks)return;blockStatus.style.display='';
-    var sorted=Object.values(state.blocks).sort(function(a,b){if(a.topic!==b.topic)return a.topic.localeCompare(b.topic);return a.title.localeCompare(b.title);});
     blockStatusBody.innerHTML='';
-    sorted.forEach(function(bd){var b=state.progress.blocks[bd.slug],st=b?b.status:'not-started',chip=document.createElement('button');chip.className='block-status-chip '+st;chip.dataset.slug=bd.slug;
+    sortedBlocks().forEach(function(bd){var b=state.progress.blocks[bd.slug],st=b?b.status:'not-started',chip=document.createElement('button');chip.className='block-status-chip '+st;chip.dataset.slug=bd.slug;
       if(st==='mastered'){var ck=document.createElement('span');ck.textContent='✓';ck.style.fontWeight='600';chip.appendChild(ck);}
-      var lbl=document.createElement('span');lbl.textContent=(state.lang==='zh'&&bd.title_zh)?bd.title_zh.toUpperCase():bd.title.toUpperCase();chip.appendChild(lbl);
+      var lbl=document.createElement('span');lbl.textContent=localName(bd).toUpperCase();chip.appendChild(lbl);
       if(st==='in-progress'){var dot=document.createElement('span');dot.className='chip-dot';chip.appendChild(dot);}
       chip.addEventListener('click',function(){if(bd.slug!==state.blockSlug)selectBlock(bd.slug);});blockStatusBody.appendChild(chip);});
   }
@@ -438,7 +439,7 @@
   function addAgentMessage(html,na){var m=document.createElement('div');m.className='message agent-message';if(na)m.style.animation='none';var c=document.createElement('div');c.className='message-content';c.innerHTML=html;m.appendChild(c);conversation.appendChild(m);if(window.renderMathInElement)try{window.renderMathInElement(c,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});}catch(e){}}
   function setTypingIndicator(v){var ind=document.getElementById('typingIndicator');if(v){if(!ind){ind=document.createElement('div');ind.id='typingIndicator';ind.className='message agent-message';ind.style.animation='none';ind.innerHTML='<div class="message-content"><div class="typing-indicator"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div></div>';conversation.appendChild(ind);}}else{if(ind)ind.remove();}scrollToBottom();}
   function addErrorMessage(t){var m=document.createElement('div');m.className='message agent-message';var c=document.createElement('div');c.className='message-content';c.innerHTML='<p class="error-message">'+escapeHtml(t)+'</p>';m.appendChild(c);conversation.appendChild(m);scrollToBottom();}
-  function addBlockContextMessage(block){var m=document.createElement('div');m.className='message agent-message';m.dataset.message='context';var c=document.createElement('div');c.className='message-content';var lbl=(state.lang==='zh'&&block.title_zh)?block.title_zh.toUpperCase():block.title.toUpperCase();var desc=(state.lang==='zh'&&block.description_zh)?block.description_zh:block.description;c.innerHTML='<div class="knowledge-tag" style="margin-bottom:8px;">'+escapeHtml(lbl)+'</div><p><strong>'+escapeHtml(lbl)+'</strong> — '+escapeHtml(desc)+'</p><p style="font-size:15px;color:var(--ink-mute);margin-top:8px;">'+escapeHtml(t('welcomeTitle'))+'</p>';m.appendChild(c);conversation.appendChild(m);scrollToBottom();}
+  function addBlockContextMessage(block){var m=document.createElement('div');m.className='message agent-message';m.dataset.message='context';var c=document.createElement('div');c.className='message-content';var lbl=localName(block).toUpperCase();var desc=(state.lang==='zh'&&block.description_zh)?block.description_zh:block.description;c.innerHTML='<div class="knowledge-tag" style="margin-bottom:8px;">'+escapeHtml(lbl)+'</div><p><strong>'+escapeHtml(lbl)+'</strong> — '+escapeHtml(desc)+'</p><p style="font-size:15px;color:var(--ink-mute);margin-top:8px;">'+escapeHtml(t('welcomeTitle'))+'</p>';m.appendChild(c);conversation.appendChild(m);scrollToBottom();}
   function removeContextMessages(){conversation.querySelectorAll('[data-message="context"]').forEach(function(el){el.remove();});}
 
   // === Block selection ===
@@ -451,7 +452,7 @@
 
   async function startBlockAssessment(slug){
     if(state.isLoading)return;state.isLoading=true;inputField.disabled=true;sendButton.disabled=true;setTypingIndicator(true);
-    var mem='';if(state.memoryEnabled&&!state.memoryInjected){mem=buildMemorySummary();if(mem)state.memoryInjected=true;}
+    var mem=maybeBuildMemory();
     var msg=state.lang==='zh'?'[SYSTEM] 学生选择了知识块：'+slug+'。请开始主动评估。':'[SYSTEM] Student selected block: '+slug+'. Begin proactive assessment.';
     try{
       var r=await fetch('/api/chat',{method:'POST',headers:buildApiHeaders({}),body:JSON.stringify({username:state.username,message:msg,block_slug:slug,history:[],memory_summary:mem,lang:state.lang})});
@@ -468,7 +469,7 @@
   async function sendMessage(message){
     if(state.isLoading)return;state.isLoading=true;inputField.disabled=true;sendButton.disabled=true;
     addUserMessage(message);state.history.push({role:'user',content:message});scrollToBottom();setTypingIndicator(true);
-    var mem='';if(state.memoryEnabled&&!state.memoryInjected){mem=buildMemorySummary();if(mem)state.memoryInjected=true;}
+    var mem=maybeBuildMemory();
     try{
       var body={username:state.username,message:message,block_slug:state.blockSlug,history:state.history.slice(0,-1),lang:state.lang};if(mem)body.memory_summary=mem;
       var r=await fetch('/api/chat',{method:'POST',headers:buildApiHeaders({}),body:JSON.stringify(body)});

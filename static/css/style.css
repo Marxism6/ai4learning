@@ -550,8 +550,6 @@ body {
   pointer-events: auto;
 }
 
-.math-palette-group { margin-bottom: 6px; }
-.math-palette-title { font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--ink-mute); margin: 6px 0 6px; font-family: var(--font-sans); }
 .math-palette-grid { display: flex; flex-wrap: wrap; gap: 4px; }
 
 .math-palette-tabs {
@@ -958,10 +956,6 @@ body {
     min-height: 44px;
   }
 
-  .lang-toggle {
-    min-height: 44px;
-  }
-
   .btn-settings {
     min-height: 44px;
   }
@@ -1078,35 +1072,6 @@ body {
 @keyframes chipPulse {
   0%, 100% { opacity: 0.4; }
   50% { opacity: 1; }
-}
-
-/* === Language Toggle (reuses mode-toggle-like pill) === */
-.lang-toggle {
-  display: flex;
-  background-color: var(--canvas-inset);
-  border-radius: 9999px;
-  padding: 2px;
-  border: none;
-  cursor: pointer;
-  font-family: var(--font-sans);
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.0;
-  letter-spacing: 0;
-  color: var(--ink-mute);
-}
-
-.lang-option {
-  padding: 6px 10px;
-  border-radius: 9999px;
-  transition: background-color 200ms ease, color 200ms ease;
-  min-width: 28px;
-  text-align: center;
-}
-
-.lang-option.active {
-  background-color: var(--accent);
-  color: var(--on-accent);
 }
 
 /* === Settings Gear Button === */

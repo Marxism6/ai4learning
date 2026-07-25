@@ -103,7 +103,7 @@
 
   // === i18n ===
   function t(k){return I18N[state.lang][k]||k;}
-  function tf(k){var f=I18N[state.lang][k];return typeof f==='function'?f:function(){return f||k;};}
+  function templateFn(k){var f=I18N[state.lang][k];return typeof f==='function'?f:function(){return f||k;};}
   function applyLanguage(){
     document.documentElement.lang=state.lang;
     document.querySelectorAll('[data-i18n]').forEach(function(el){var k=el.dataset.i18n;if(I18N[state.lang][k])el.textContent=t(k);});
@@ -180,7 +180,7 @@
       var data=await res.json();modelList.innerHTML='';
       data.models.forEach(function(m){var o=document.createElement('option');o.value=m;modelList.appendChild(o);});
       if(!modelInput.value&&data.models.length>0)modelInput.value=data.models[0];
-      detectModelsBtn.textContent=tf('detectModelsDone')(data.models.length);
+      detectModelsBtn.textContent=templateFn('detectModelsDone')(data.models.length);
     }catch(err){addErrorMessage(t('errorPrefix')+err.message);detectModelsBtn.textContent=t('detectModelsFail');}
     setTimeout(function(){detectModelsBtn.disabled=false;detectModelsBtn.textContent=t('detectModels');},2000);
   });
@@ -189,13 +189,14 @@
   var USERNAME_RE=/^[\w\u4e00-\u9fa5 .\-]+$/;
   function localName(b){return(state.lang==='zh'&&b.title_zh)?b.title_zh:b.title;}
   function sortedBlocks(){return Object.values(state.blocks).sort(function(a,b){if(a.topic!==b.topic)return a.topic.localeCompare(b.topic);return a.title.localeCompare(b.title);});}
+  function renderMathEl(el){if(window.renderMathInElement)try{window.renderMathInElement(el,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});}catch(e){}}
   function maybeBuildMemory(){if(state.memoryEnabled&&!state.memoryInjected){var m=buildMemorySummary();if(m){state.memoryInjected=true;return m;}}return '';}
 
   // === Helpers ===
   function isApiKeyError(msg){return /api[_ ]?key/i.test(msg||'');}
   function escapeHtml(s){var d=document.createElement('div');d.appendChild(document.createTextNode(s));return d.innerHTML;}
   function scrollToBottom(){if(scrollAnchor)scrollAnchor.scrollIntoView({behavior:'smooth',block:'end'});}
-  const SP='nat-';
+  const SP='nat-'; // localStorage prefix
   function lsGet(k,f){try{var v=localStorage.getItem(SP+k);return v!==null?v:f;}catch(_){return f;}}
   function lsSet(k,v){try{localStorage.setItem(SP+k,v);}catch(_){}}
   function lsRemove(k){try{localStorage.removeItem(SP+k);}catch(_){}}
@@ -235,7 +236,7 @@
     sorted.forEach(function(entry,i){
       var card=document.createElement('div');card.className='history-entry';
       var date=entry.timestamp?new Date(entry.timestamp).toLocaleString():'';
-      var preview=tf('historyPreview')(entry.messageCount,entry.preview.slice(0,60));
+      var preview=templateFn('historyPreview')(entry.messageCount,entry.preview.slice(0,60));
       card.innerHTML='<div class="history-entry-header"><span class="history-entry-block">'+escapeHtml(entry.blockTitle||'')+'</span><span class="history-entry-date">'+escapeHtml(date)+'</span></div>'+
         '<div class="history-entry-preview">'+escapeHtml(preview)+'</div>';
       card.addEventListener('click',function(){viewHistory(entry);});
@@ -320,7 +321,7 @@
 
   // === LaTeX ===
   function tryRenderLatex(l,d){try{return katex.renderToString(l,{displayMode:d,throwOnError:false,strict:false});}catch(e){return null;}}
-  function renderInline(t){var dm=[];var s=t.replace(/\$\$([\s\S]+?)\$\$/g,function(_,m){var i=dm.length;dm.push(m.trim());return '\x00DM'+i+'\x00';});s=renderInlineMath(s);s=s.replace(/\x00DM(\d+)\x00/g,function(_,i){var n=parseInt(i);return tryRenderLatex(dm[n],true)||escapeHtml('$$'+dm[n]+'$$');});s=s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');s=s.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g,'<em>$1</em>');return s;}
+  function renderInline(text){var dm=[];var s=text.replace(/\$\$([\s\S]+?)\$\$/g,function(_,m){var i=dm.length;dm.push(m.trim());return '\x00DM'+i+'\x00';});s=renderInlineMath(s);s=s.replace(/\x00DM(\d+)\x00/g,function(_,i){var n=parseInt(i);return tryRenderLatex(dm[n],true)||escapeHtml('$$'+dm[n]+'$$');});s=s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');s=s.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g,'<em>$1</em>');return s;}
   function renderInlineMath(t){
     if(!t.trim())return'';const p=[];const rx=/(?<!\$)\$(?!\$)([^$]+?)(?<!\$)\$(?!\$)/g;var li=0,m;
     while((m=rx.exec(t))!==null){if(m.index>li)p.push(escapeHtml(t.slice(li,m.index)));var r=tryRenderLatex(m[1],false);p.push(r||escapeHtml('$'+m[1]+'$'));li=rx.lastIndex;}
@@ -435,8 +436,8 @@
   async function writeProgress(slug,st,ml){if(!state.username)return;try{var b={block_slug:slug};if(st)b.status=st;if(ml!=null)b.mastery_level=ml;var r=await fetch('/api/progress/'+encodeURIComponent(state.username),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});if(!r.ok){console.warn('writeProgress status',r.status);return;}state.progress=await r.json();updateProgressUI();}catch(e){console.error('writeProgress',e);}}
 
   // === Messages ===
-  function addUserMessage(t,na){var m=document.createElement('div');m.className='message user-message';if(na)m.style.animation='none';var c=document.createElement('div');c.className='message-content';c.innerHTML='<p>'+escapeHtml(t)+'</p>';m.appendChild(c);conversation.appendChild(m);}
-  function addAgentMessage(html,na){var m=document.createElement('div');m.className='message agent-message';if(na)m.style.animation='none';var c=document.createElement('div');c.className='message-content';c.innerHTML=html;m.appendChild(c);conversation.appendChild(m);if(window.renderMathInElement)try{window.renderMathInElement(c,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});}catch(e){}}
+  function addUserMessage(t,noAnimation){var m=document.createElement('div');m.className='message user-message';if(noAnimation)m.style.animation='none';var c=document.createElement('div');c.className='message-content';c.innerHTML='<p>'+escapeHtml(t)+'</p>';m.appendChild(c);conversation.appendChild(m);}
+  function addAgentMessage(html,noAnimation){var m=document.createElement('div');m.className='message agent-message';if(noAnimation)m.style.animation='none';var c=document.createElement('div');c.className='message-content';c.innerHTML=html;m.appendChild(c);conversation.appendChild(m);renderMathEl(c)}
   function setTypingIndicator(v){var ind=document.getElementById('typingIndicator');if(v){if(!ind){ind=document.createElement('div');ind.id='typingIndicator';ind.className='message agent-message';ind.style.animation='none';ind.innerHTML='<div class="message-content"><div class="typing-indicator"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div></div>';conversation.appendChild(ind);}}else{if(ind)ind.remove();}scrollToBottom();}
   function addErrorMessage(t){var m=document.createElement('div');m.className='message agent-message';var c=document.createElement('div');c.className='message-content';c.innerHTML='<p class="error-message">'+escapeHtml(t)+'</p>';m.appendChild(c);conversation.appendChild(m);scrollToBottom();}
   function addBlockContextMessage(block){var m=document.createElement('div');m.className='message agent-message';m.dataset.message='context';var c=document.createElement('div');c.className='message-content';var lbl=localName(block).toUpperCase();var desc=(state.lang==='zh'&&block.description_zh)?block.description_zh:block.description;c.innerHTML='<div class="knowledge-tag" style="margin-bottom:8px;">'+escapeHtml(lbl)+'</div><p><strong>'+escapeHtml(lbl)+'</strong> — '+escapeHtml(desc)+'</p><p style="font-size:15px;color:var(--ink-mute);margin-top:8px;">'+escapeHtml(t('welcomeTitle'))+'</p>';m.appendChild(c);conversation.appendChild(m);scrollToBottom();}
@@ -537,6 +538,4 @@
   function updateFormulaOverflow(){conversation.querySelectorAll('.formula-card').forEach(function(c){c.classList.toggle('is-overflowing',c.scrollWidth>c.clientWidth);});}
   new MutationObserver(updateFormulaOverflow).observe(conversation,{childList:true,subtree:true});
   window.addEventListener('resize',updateFormulaOverflow);
-
-  window.__NAT={state};
 })();

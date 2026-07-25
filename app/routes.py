@@ -32,7 +32,7 @@ class ChatRequest(BaseModel):
     block_slug: str | None = None
     history: list[dict[str, str]] = []
     memory_summary: str | None = None
-    lang: str = "zh"
+    lang: Literal["zh", "en"] = "zh"
 
 
 class ChatResponse(BaseModel):
@@ -156,7 +156,7 @@ async def upload_image(
     file: UploadFile = File(...),
     username: str = Form(...),
     block_slug: str | None = Form(None),
-    lang: str = Form("zh"),
+    lang: Literal["zh", "en"] = Form("zh"),
     llm: LLMClient = Depends(get_llm_client),
 ):
     """Upload an image for problem recognition.

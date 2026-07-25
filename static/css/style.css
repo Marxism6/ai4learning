@@ -154,6 +154,7 @@ body {
 }
 
 .nav-controls {
+  margin-left: auto;
   display: flex;
   align-items: center;
   gap: 8px;

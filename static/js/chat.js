@@ -302,6 +302,7 @@
 
   // === LaTeX ===
   function tryRenderLatex(l,d){try{return katex.renderToString(l,{displayMode:d,throwOnError:false,strict:false});}catch(e){return null;}}
+  function renderInline(t){var s=renderInlineMath(t);s=s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');s=s.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g,'<em>$1</em>');return s;}
   function renderInlineMath(t){
     if(!t.trim())return'';const p=[];const rx=/(?<!\$)\$(?!\$)([^$]+?)(?<!\$)\$(?!\$)/g;var li=0,m;
     while((m=rx.exec(t))!==null){if(m.index>li)p.push(escapeHtml(t.slice(li,m.index)));var r=tryRenderLatex(m[1],false);p.push(r||escapeHtml('$'+m[1]+'$'));li=rx.lastIndex;}
@@ -316,9 +317,9 @@
     var chartB=[];proc=proc.replace(/:::chart\{(.+?)\}:::/g,function(_,j){var i=chartB.length;chartB.push(j);return'\x00CHART'+i+'\x00';});
     var lines=proc.split('\n'),html=[],inL=false;
     for(var i=0;i<lines.length;i++){var tr=lines[i].trim();if(!tr){if(inL){html.push('</ul>');inL=false;}continue;}
-      if(tr.match(/^[-*+]\s+/)){if(!inL){html.push('<ul>');inL=true;}html.push('<li>'+renderInlineMath(tr.replace(/^[-*+]\s+/,''))+'</li>');continue;}
-      if(tr.match(/^\d+\.\s+/)){if(!inL){html.push('<ol>');inL=true;}html.push('<li>'+renderInlineMath(tr.replace(/^\d+\.\s+/,''))+'</li>');continue;}
-      if(inL){html.push('</ul>');inL=false;}var p=renderInlineMath(lines[i]);p=p.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');p=p.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g,'<em>$1</em>');html.push('<p>'+p+'</p>');
+      if(tr.match(/^[-*+]\s+/)){if(!inL){html.push('<ul>');inL=true;}html.push('<li>'+renderInline(tr.replace(/^[-*+]\s+/,''))+'</li>');continue;}
+      if(tr.match(/^\d+\.\s+/)){if(!inL){html.push('<ol>');inL=true;}html.push('<li>'+renderInline(tr.replace(/^\d+\.\s+/,''))+'</li>');continue;}
+      if(inL){html.push('</ul>');inL=false;}html.push('<p>'+renderInline(lines[i])+'</p>');
     }if(inL)html.push('</ul>');
     var h=html.join('\n');
     h=h.replace(/\x00MATH(\d+)\x00/g,function(_,i){var m=mathB[parseInt(i)],r=tryRenderLatex(m,true);return'<div class="formula-card">'+(r||escapeHtml('$$'+m+'$$'))+'</div>';});

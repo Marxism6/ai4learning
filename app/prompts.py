@@ -136,6 +136,7 @@ You MUST respond in **Chinese (中文)**. Follow these rules strictly:
 5. Algorithm names in code/pseudocode remain in English.
 6. The ::: problem block title uses format: **中文名称（ENGLISH NAME）** | Level N: 中文描述
 7. Be natural and encouraging in Chinese — don't sound like a translation.
+8. 选择题块格式：::: choice 块，第一行为 **问题**，随后四行以 "A. " "B. " "C. " "D. " 开头。
 """
 
 LANGUAGE_INSTRUCTION_EN = """

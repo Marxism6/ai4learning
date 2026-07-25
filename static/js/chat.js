@@ -330,10 +330,10 @@
     greek:['α','β','γ','δ','ε','ζ','η','θ','λ','μ','π','ρ','σ','τ','φ','ω','Γ','Δ','Θ','Λ','Π','Σ','Φ','Ψ','Ω'],
     operators:['±','×','÷','√','∞','≈','≠','≤','≥','∝','∂','∇','∫','∑','∏','∈','⊂','∪','∩','→','⇒','↔'],
     latex:[
-      {label:'x²',insert:'$x^2$'},{label:'xᵢ',insert:'$x_i$'},{label:'a/b',insert:'$\\\\frac{a}{b}$'},
-      {label:'∫ᵃᵇ',insert:'$\\\\int_a^b f(x)\\\\,dx$'},{label:'Σ',insert:'$\\\\sum_{i=1}^{n}$'},
-      {label:'lim',insert:'$\\\\lim_{x \\\\to a}$'},{label:'√x',insert:'$\\\\sqrt{x}$'},
-      {label:'矩阵',insert:'$$\\\\begin{pmatrix} a & b \\\\\\\\ c & d \\\\end{pmatrix}$$'},
+      {label:'x²',insert:'$x^2$'},{label:'xᵢ',insert:'$x_i$'},{label:'a/b',insert:'$\\frac{a}{b}$'},
+      {label:'∫ᵃᵇ',insert:'$\\int_a^b f(x)\\,dx$'},{label:'Σ',insert:'$\\sum_{i=1}^{n}$'},
+      {label:'lim',insert:'$\\lim_{x \\to a}$'},{label:'√x',insert:'$\\sqrt{x}$'},
+      {label:'矩阵',insert:'$$\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}$$'},
       {label:"f'(x)",insert:"$f'(x)$"},{label:'eˣ',insert:'$e^x$'},
     ],
   };

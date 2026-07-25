@@ -1118,6 +1118,277 @@ body {
   margin-top: 4px;
 }
 
+/* === Block Selector Dropdown === */
+.block-selector {
+  position: relative;
+  flex: 1;
+  max-width: 360px;
+}
+
+.block-selector-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--canvas-inset);
+  color: var(--nav-text);
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 540;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  transition: background-color 100ms ease;
+}
+
+.block-selector-btn:hover {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.block-selector-btn svg {
+  flex-shrink: 0;
+}
+
+.block-selector-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.block-selector-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 260px;
+  max-height: 360px;
+  overflow-y: auto;
+  background: var(--canvas-elevated);
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  z-index: 150;
+  padding: 6px;
+}
+
+.block-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 14px;
+  border: none;
+  background: none;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 460;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  line-height: 1.3;
+}
+
+.block-menu-item:hover {
+  background: var(--canvas-inset);
+}
+
+.block-menu-item.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* === Settings Toggle Group === */
+.settings-toggle-group {
+  display: flex;
+  background-color: var(--canvas-inset);
+  border-radius: 9999px;
+  padding: 2px;
+  gap: 2px;
+  align-self: flex-start;
+}
+
+.settings-option {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.0;
+  letter-spacing: 0;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  border: none;
+  cursor: pointer;
+  background: transparent;
+  color: var(--ink-mute);
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+.settings-option.active {
+  background-color: var(--accent);
+  color: var(--on-accent);
+}
+
+/* === Settings Memory Switch === */
+.settings-switch {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  gap: 8px;
+  width: 44px;
+  height: 24px;
+  position: relative;
+}
+
+.settings-switch input {
+  display: none;
+}
+
+.settings-switch-slider {
+  position: absolute;
+  inset: 0;
+  background-color: var(--ink-faint);
+  border-radius: 9999px;
+  transition: background-color 200ms ease;
+}
+
+.settings-switch-slider::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: white;
+  transition: transform 200ms ease;
+}
+
+.settings-switch input:checked + .settings-switch-slider {
+  background-color: var(--accent);
+}
+
+.settings-switch input:checked + .settings-switch-slider::after {
+  transform: translateX(20px);
+}
+
+.settings-divider {
+  border: none;
+  border-top: 1px solid var(--hairline);
+  margin: 4px 0;
+}
+
+/* === History Button (nav) === */
+.btn-history {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background-color: transparent;
+  color: var(--nav-mute);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 100ms ease, background-color 100ms ease;
+}
+
+.btn-history:hover {
+  color: var(--nav-text);
+  background-color: rgba(255,255,255,0.08);
+}
+
+/* === History Card === */
+.history-card {
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 50vh;
+  overflow-y: auto;
+  margin: 8px 0;
+}
+
+.history-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--hairline);
+  border-radius: 10px;
+  background: var(--canvas);
+  cursor: pointer;
+  transition: border-color 100ms ease, background-color 100ms ease;
+}
+
+.history-entry:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.history-entry-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.history-entry-block {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.history-entry-date {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 460;
+  color: var(--ink-faint);
+}
+
+.history-entry-preview {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 460;
+  color: var(--ink-mute);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* === History View Bar === */
+.history-view-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 10px 24px;
+  background-color: var(--accent-soft);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.history-view-bar-text {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 540;
+  color: var(--accent);
+}
+
+@media (max-width: 767px) {
+  .block-selector {
+    max-width: 180px;
+  }
+}
+
 /* === Accessibility: Focus === */
 .input-field:focus-visible,
 .btn-send:focus-visible,

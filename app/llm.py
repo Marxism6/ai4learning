@@ -36,11 +36,12 @@ class LLMClient:
     ):
         self._api_key: str | None = api_key
         self._headers: dict | None = None
-        self.api_base = (
+        raw_base = (
             api_base
             or os.environ.get("LLM_API_BASE")
             or DEFAULT_API_BASE
         ).rstrip("/")
+        self.api_base = raw_base
         self.model = model or os.environ.get("LLM_MODEL") or DEFAULT_MODEL
 
     @property
@@ -70,11 +71,25 @@ class LLMClient:
     def _url(self) -> str:
         return f"{self.api_base}/chat/completions"
 
+    @property
+    def _url_v1(self) -> str:
+        """Fallback URL with /v1 prefix for providers that require it."""
+        base = self.api_base.rstrip("/")
+        if base.endswith("/v1"):
+            return f"{base}/chat/completions"
+        return f"{base}/v1/chat/completions"
+
     async def _request(self, body: dict, timeout: float = 60.0) -> dict:
-        """Single try/except block for all LLM API calls."""
+        """Single try/except block for all LLM API calls. Retries with /v1 on 404."""
         async with httpx.AsyncClient(timeout=timeout) as client:
             try:
                 response = await client.post(self._url, headers=self.headers, json=body)
+                if response.status_code == 404 and not self.api_base.endswith("/v1"):
+                    logger.info("Got 404, retrying with /v1 prefix")
+                    response = await client.post(self._url_v1, headers=self.headers, json=body)
+                    if response.status_code != 404:
+                        self.api_base = self.api_base.rstrip("/") + "/v1"
+                        logger.info("Auto-corrected api_base to %s", self.api_base)
                 response.raise_for_status()
                 return response.json()
             except httpx.HTTPStatusError as e:
@@ -167,55 +182,46 @@ class LLMClient:
     async def list_models(self) -> list[str]:
         """Fetch available model IDs from the API provider.
 
-        Tries the OpenAI-compatible /models endpoint first.
-        Falls back to Ollama /api/tags format if /models returns 404.
-        Returns a sorted list of model IDs, or raises RuntimeError.
+        Tries multiple URL patterns to handle providers that require /v1 prefix:
+        1. {api_base}/models (standard OpenAI-compatible)
+        2. {api_base}/v1/models (auto-corrects api_base if user omitted /v1)
+        3. {api_base}/api/tags (Ollama fallback)
         """
-        models_url = f"{self.api_base}/models"
         auth_headers = {"Authorization": f"Bearer {self.api_key}"}
 
         async with httpx.AsyncClient(timeout=10.0) as client:
+            # Try direct /models first
+            urls_to_try = [
+                f"{self.api_base}/models",
+                f"{self.api_base}/v1/models",
+            ]
+            for url in urls_to_try:
+                try:
+                    resp = await client.get(url, headers=auth_headers)
+                    resp.raise_for_status()
+                    data = resp.json()
+                    if "data" in data:
+                        # Auto-correct api_base if /v1 variant worked
+                        if url.endswith("/v1/models") and not self.api_base.endswith("/v1"):
+                            self.api_base = self.api_base.rstrip("/") + "/v1"
+                            logger.info("Auto-corrected api_base to %s", self.api_base)
+                        return sorted(m["id"] for m in data["data"])
+                except (httpx.HTTPStatusError, httpx.TimeoutException, KeyError):
+                    continue
+
+            # Ollama fallback: /api/tags
             try:
-                resp = await client.get(models_url, headers=auth_headers)
-                resp.raise_for_status()
-                data = resp.json()
-                # OpenAI-compatible: {"data": [{"id": "gpt-4o"}, ...]}
-                if "data" in data:
-                    return sorted(m["id"] for m in data["data"])
-                # Fallback: try /api/tags (Ollama)
                 fallback_url = f"{self.api_base}/api/tags"
-                fallback_resp = await client.get(fallback_url, timeout=10.0)
+                fallback_resp = await client.get(fallback_url, headers=auth_headers, timeout=10.0)
                 fallback_resp.raise_for_status()
                 fallback_data = fallback_resp.json()
-                models = []
-                for m in fallback_data.get("models", []):
-                    name = m.get("name", "")
-                    if name:
-                        models.append(name)
-                return sorted(models)
-            except httpx.HTTPStatusError as e:
-                if e.response.status_code == 404:
-                    # Try Ollama /api/tags fallback
-                    try:
-                        fallback_url = f"{self.api_base}/api/tags"
-                        fallback_resp = await client.get(fallback_url, timeout=10.0)
-                        fallback_resp.raise_for_status()
-                        fallback_data = fallback_resp.json()
-                        models = []
-                        for m in fallback_data.get("models", []):
-                            name = m.get("name", "")
-                            if name:
-                                models.append(name)
-                        return sorted(models)
-                    except Exception:
-                        raise RuntimeError(
-                            "Could not fetch model list from either /models or /api/tags. "
-                            "Check your API Base URL."
-                        ) from e
-                logger.error("Models API error: %s %s", e.response.status_code, e.response.text)
-                raise RuntimeError(
-                    f"Models API returned {e.response.status_code}: {e.response.text}"
-                ) from e
-            except httpx.TimeoutException:
-                logger.error("Models API timeout")
-                raise RuntimeError("Models API request timed out")
+                models = [m["name"] for m in fallback_data.get("models", []) if m.get("name")]
+                if models:
+                    return sorted(models)
+            except Exception:
+                pass
+
+            raise RuntimeError(
+                "Could not fetch model list. Check your API Base URL "
+                "(try adding /v1 at the end, e.g. https://api.example.com/v1)."
+            )

@@ -347,7 +347,7 @@
     groups.forEach(function(g){
       var tab=document.createElement('button');tab.className='math-palette-tab'+(mathPaletteTab===g.key?' active':'');
       tab.textContent=g.title;
-      tab.addEventListener('click',function(){mathPaletteTab=g.key;renderMathPalette();});
+      tab.addEventListener('click',function(e){e.stopPropagation();mathPaletteTab=g.key;renderMathPalette();});
       tabBar.appendChild(tab);
     });
     mathPalette.appendChild(tabBar);

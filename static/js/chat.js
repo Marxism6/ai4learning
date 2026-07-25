@@ -58,7 +58,7 @@
       unsupportedFormat:'Unsupported format. Use PNG, JPG, WEBP.',
       assessmentFailed:'Assessment failed', serverError:'Server error', uploadFailed:'Upload failed',
       recognizedProblem:'RECOGNIZED PROBLEM',
-      apiKeyLabel:'API Key', apiBaseLabel:'API Base URL', modeEye:'EYE', modeStd:'STD',
+      apiKeyLabel:'API Key', apiBaseLabel:'API Base URL', modeEye:'Eye-care', modeStd:'Standard',
       memTitle:'Cross-session memory', langTitle:'Switch language', modeTitle:'Toggle color mode',
       langLabel:'Language', themeLabel:'Theme', historyTitle:'History (click to resume)',
       historyButtonTitle:'History', clearHistory:'Clear History', confirmClear:'Clear all history?',

@@ -312,7 +312,7 @@
   }
 
   function closeBlockMenu(){blockSelectorMenu.style.display='none';}
-  function toggleBlockMenu(){blockSelectorMenu.style.display=(blockSelectorMenu.style.display==='block')?'none':'block';renderBlockMenu();}
+  function toggleBlockMenu(){closeMathPalette();blockSelectorMenu.style.display=(blockSelectorMenu.style.display==='block')?'none':'block';renderBlockMenu();}
   blockSelectorBtn.addEventListener('click',toggleBlockMenu);
   document.addEventListener('click',function(e){if(!blockSelectorBtn.contains(e.target)&&!blockSelectorMenu.contains(e.target))closeBlockMenu();});
 
@@ -383,7 +383,7 @@
 
   function toggleMathPalette(){
     if(mathPalette.style.display==='block'){mathPalette.style.display='none';return;}
-    renderMathPalette();mathPalette.style.display='block';
+    closeBlockMenu();renderMathPalette();mathPalette.style.display='block';
   }
   function closeMathPalette(){mathPalette.style.display='none';}
 

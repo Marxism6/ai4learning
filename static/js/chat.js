@@ -33,7 +33,7 @@
       langLabel:'语言', themeLabel:'主题', historyTitle:'历史对话（点击继续）',
       historyButtonTitle:'历史记录', clearHistory:'清空历史', confirmClear:'确定清空所有历史吗？',
       viewingHistory:'正在查看历史对话', backToCurrent:'返回当前对话', emptyHistory:'暂无历史对话',
-      historyPreview:'{n} 条消息 - {preview}...',
+      historyPreview:function(n,p){return n+' 条消息 - '+p+'...';},
     },
     en: {
       brand:'NUMERICAL ANALYSIS TUTOR', chatTab:'CHAT',
@@ -61,7 +61,7 @@
       langLabel:'Language', themeLabel:'Theme', historyTitle:'History (click to resume)',
       historyButtonTitle:'History', clearHistory:'Clear History', confirmClear:'Clear all history?',
       viewingHistory:'Viewing history', backToCurrent:'Back to current', emptyHistory:'No history',
-      historyPreview:'{n} messages - {preview}...',
+      historyPreview:function(n,p){return n+' messages - '+p+'...';},
     },
   };
 
@@ -312,7 +312,7 @@
 
   // === LaTeX ===
   function tryRenderLatex(l,d){try{return katex.renderToString(l,{displayMode:d,throwOnError:false,strict:false});}catch(e){return null;}}
-  function renderInline(t){var s=renderInlineMath(t);s=s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');s=s.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g,'<em>$1</em>');return s;}
+  function renderInline(t){var s=t.replace(/\$\$([\s\S]+?)\$\$/g,function(_,m){return tryRenderLatex(m.trim(),true)||escapeHtml('$$'+m+'$$');});s=renderInlineMath(s);s=s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');s=s.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g,'<em>$1</em>');return s;}
   function renderInlineMath(t){
     if(!t.trim())return'';const p=[];const rx=/(?<!\$)\$(?!\$)([^$]+?)(?<!\$)\$(?!\$)/g;var li=0,m;
     while((m=rx.exec(t))!==null){if(m.index>li)p.push(escapeHtml(t.slice(li,m.index)));var r=tryRenderLatex(m[1],false);p.push(r||escapeHtml('$'+m[1]+'$'));li=rx.lastIndex;}

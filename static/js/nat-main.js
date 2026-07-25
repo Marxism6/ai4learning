@@ -20,14 +20,13 @@
       ind.innerHTML = '<div class="message-content"><p class="body-sm" style="color:var(--ink-mute);">' + N.escapeHtml(N.t('analyzingImg')) + '</p></div>'; N.els.conversation.appendChild(ind); N.scrollToBottom();
       try {
         var fd = new FormData(); fd.append('file', file); fd.append('username', N.state.username); fd.append('lang', N.state.lang); if (N.state.blockSlug) fd.append('block_slug', N.state.blockSlug);
-        var xh = {}; var ak = N.lsGet('api-key', ''), mo = N.lsGet('model', ''), ab = N.lsGet('api-base', ''); if (ak) xh['X-API-Key'] = ak; if (mo) xh['X-Model'] = mo; if (ab) xh['X-API-Base'] = ab;
-        var r = await fetch('/api/upload', { method: 'POST', headers: xh, body: fd }); ind.remove();
+        var r = await fetch('/api/upload', { method: 'POST', headers: N.buildApiHeaders({}), body: fd }); ind.remove();
         if (!r.ok) { var ed = await r.json().catch(function () { return {}; }); throw new Error(N.t('uploadFailed') + ': ' + (ed.detail || r.status)); }
         var data = await r.json(), rec = data.recognized_text;
         var pm = document.createElement('div'); pm.className = 'message agent-message'; pm.style.animation = 'none'; var pc = document.createElement('div'); pc.className = 'message-content';
         pc.innerHTML = '<div class="knowledge-tag" style="margin-bottom:8px;">' + N.escapeHtml(N.t('recognizedProblem')) + '</div>';
         var bd = document.createElement('div'); bd.className = 'problem-body'; bd.innerHTML = N.markdownToHtml(rec); pc.appendChild(bd); pm.appendChild(pc); N.els.conversation.appendChild(pm);
-        if (window.renderMathInElement) try { window.renderMathInElement(pc, { delimiters: [{ left: '$$', right: '$$', display: true }, { left: '$', right: '$', display: false }], throwOnError: false }); } catch (e) {}
+        N.renderMathEl(pc);
         N.state.history.push({ role: 'assistant', content: rec }); N.saveSession();
       } catch (err) { var ui = document.getElementById('uploadIndicator'); if (ui) ui.remove(); N.addErrorMessage(N.t('errorPrefix') + err.message); }
       finally { N.state.isLoading = false; N.els.inputField.disabled = false; N.els.sendButton.disabled = false; N.els.uploadButton.disabled = false; N.els.inputField.focus(); N.scrollToBottom(); }

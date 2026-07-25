@@ -38,6 +38,8 @@
 ├── 内循环（浏览器测试驱动 / 动态测试）
 │   ├── 1. 用 .scratch/browser-test-prompt.md 派 subagent 做 ego-in-wsl 实操测试
 │   │      → subagent 返回 bug 报告 + 截图（存 bugpicture/）
+│   │      ★ 每次派测试 agent 时同时要求记录 ego-in-wsl 工具本身的使用痛点
+│   │        → 写入 .scratch/ego-in-wsl-bugs/NN-描述.md（每问题一个文件）
 │   ├── 2. 策划者查证：浏览器复现 + 代码分析 → 判定真伪
 │   │      （注意：测试 agent 的报告可能有误报，必须亲自复现！）
 │   ├── 3. 真 bug → /triage 切片 → gh issue create → 写修复方案+提示词 → 派 subagent 修复

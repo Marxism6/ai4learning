@@ -513,7 +513,7 @@
   newConvButton.addEventListener('click',newConversation);
 
   // === Blocks ===
-  async function loadBlocks(){try{var r=await fetch('/api/blocks');if(!r.ok)throw Error('Failed');state.blocks=await r.json();renderBlockMenu();}catch(e){console.error('loadBlocks',e);}}
+  async function loadBlocks(){try{var r=await fetch('/api/blocks');if(!r.ok)throw Error('Failed');state.blocks=await r.json();renderBlockMenu();renderBlockStatusChips();}catch(e){console.error('loadBlocks',e);}}
 
   // === Username ===
   function hideOverlay(){overlay.classList.add('hidden');setTimeout(function(){inputField.focus();},250);}

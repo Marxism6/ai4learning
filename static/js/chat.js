@@ -317,7 +317,7 @@
 
   // === LaTeX ===
   function tryRenderLatex(l,d){try{return katex.renderToString(l,{displayMode:d,throwOnError:false,strict:false});}catch(e){return null;}}
-  function renderInline(t){var s=t.replace(/\$\$([\s\S]+?)\$\$/g,function(_,m){return tryRenderLatex(m.trim(),true)||escapeHtml('$$'+m+'$$');});s=renderInlineMath(s);s=s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');s=s.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g,'<em>$1</em>');return s;}
+  function renderInline(t){var dm=[];var s=t.replace(/\$\$([\s\S]+?)\$\$/g,function(_,m){var i=dm.length;dm.push(m.trim());return '\x00DM'+i+'\x00';});s=renderInlineMath(s);s=s.replace(/\x00DM(\d+)\x00/g,function(_,i){var n=parseInt(i);return tryRenderLatex(dm[n],true)||escapeHtml('$$'+dm[n]+'$$');});s=s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');s=s.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g,'<em>$1</em>');return s;}
   function renderInlineMath(t){
     if(!t.trim())return'';const p=[];const rx=/(?<!\$)\$(?!\$)([^$]+?)(?<!\$)\$(?!\$)/g;var li=0,m;
     while((m=rx.exec(t))!==null){if(m.index>li)p.push(escapeHtml(t.slice(li,m.index)));var r=tryRenderLatex(m[1],false);p.push(r||escapeHtml('$'+m[1]+'$'));li=rx.lastIndex;}

@@ -26,5 +26,9 @@ Thumbs.db
 # Scratch / handoff files
 .scratch/
 
+# User data (privacy — per-user progress JSON)
+data/
+
 # Screenshots
 sreenshot/
+bugpicture/

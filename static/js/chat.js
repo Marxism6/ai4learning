@@ -448,6 +448,7 @@
 
   // === Block selection ===
   function selectBlock(slug){
+    archiveCurrentSession();
     state.blockSlug=slug||null;removeContextMessages();
     if(slug&&state.blocks&&state.blocks[slug])addBlockContextMessage(state.blocks[slug]);
     state.history=[];saveSession();updateBlockSelectorLabel();inputField.focus();closeBlockMenu();

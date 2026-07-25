@@ -470,6 +470,8 @@
     finally{state.isLoading=false;inputField.disabled=false;sendButton.disabled=false;scrollToBottom();}
   }
 
+  function rollbackUserMessage(el){state.history.pop();if(el)el.remove();}
+
   // === API ===
   async function sendMessage(message){
     if(state.isLoading)return;state.isLoading=true;inputField.disabled=true;sendButton.disabled=true;
@@ -478,11 +480,11 @@
     try{
       var body={username:state.username,message:message,block_slug:state.blockSlug,history:state.history.slice(0,-1),lang:state.lang};if(mem)body.memory_summary=mem;
       var r=await fetch('/api/chat',{method:'POST',headers:buildApiHeaders({}),body:JSON.stringify(body)});
-      if(!r.ok){var ed=await r.json().catch(function(){return{};});if(r.status===502&&ed.detail&&isApiKeyError(ed.detail)){setTypingIndicator(false);state.history.pop();if(userEl)userEl.remove();addErrorMessage(t('noKeyError'));openSettings();if(apiKeyInput)apiKeyInput.focus();return;}throw new Error(t('serverError')+': '+(ed.detail||r.status));}
+      if(!r.ok){var ed=await r.json().catch(function(){return{};});if(r.status===502&&ed.detail&&isApiKeyError(ed.detail)){setTypingIndicator(false);rollbackUserMessage(userEl);addErrorMessage(t('noKeyError'));openSettings();if(apiKeyInput)apiKeyInput.focus();return;}throw new Error(t('serverError')+': '+(ed.detail||r.status));}
       var data=await r.json(),reply=data.reply;inputField.value='';setTypingIndicator(false);
       var html=markdownToHtml(reply);addAgentMessage(html);state.history.push({role:'assistant',content:reply});saveSession();initCharts();
       if(state.blockSlug){if(state.history.filter(function(m){return m.role==='user';}).length===1)writeProgress(state.blockSlug,'in-progress');if(MASTERED_MARKER_RE.test(reply))writeProgress(state.blockSlug,'mastered',3);}
-    }catch(err){setTypingIndicator(false);state.history.pop();if(userEl)userEl.remove();addErrorMessage(t('errorPrefix')+err.message);if(isApiKeyError(err.message))openSettings();}
+    }catch(err){setTypingIndicator(false);rollbackUserMessage(userEl);addErrorMessage(t('errorPrefix')+err.message);if(isApiKeyError(err.message))openSettings();}
     finally{state.isLoading=false;inputField.disabled=false;sendButton.disabled=false;inputField.focus();scrollToBottom();}
   }
 

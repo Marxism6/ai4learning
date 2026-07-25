@@ -34,6 +34,7 @@
       historyButtonTitle:'历史记录', clearHistory:'清空历史', confirmClear:'确定清空所有历史吗？',
       viewingHistory:'正在查看历史对话', backToCurrent:'返回当前对话', emptyHistory:'暂无历史对话',
       historyPreview:function(n,p){return n+' 条消息 - '+p+'...';},
+      invalidUsername:'用户名只能包含中英文、数字、空格和 . _ -',
     },
     en: {
       brand:'NUMERICAL ANALYSIS TUTOR', chatTab:'CHAT',
@@ -62,6 +63,7 @@
       historyButtonTitle:'History', clearHistory:'Clear History', confirmClear:'Clear all history?',
       viewingHistory:'Viewing history', backToCurrent:'Back to current', emptyHistory:'No history',
       historyPreview:function(n,p){return n+' messages - '+p+'...';},
+      invalidUsername:'Username may only contain letters, digits, spaces, and . _ -',
     },
   };
 
@@ -76,7 +78,7 @@
 
   // DOM refs
   var overlay=document.getElementById('usernameOverlay'), usernameForm=document.getElementById('usernameForm'),
-      usernameInput=document.getElementById('usernameInput'), conversation=document.getElementById('conversation'),
+      usernameInput=document.getElementById('usernameInput'), usernameError=document.getElementById('usernameError'), conversation=document.getElementById('conversation'),
       inputField=document.getElementById('inputField'), sendButton=document.getElementById('sendButton'),
       navUser=document.getElementById('navUser'), progressIndicator=document.getElementById('progressIndicator'),
       newConvButton=document.getElementById('newConvButton'), uploadButton=document.getElementById('uploadButton'),
@@ -182,6 +184,9 @@
     }catch(err){detectModelsBtn.textContent=t('detectModelsFail');}
     setTimeout(function(){detectModelsBtn.disabled=false;detectModelsBtn.textContent=t('detectModels');},2000);
   });
+
+  // === Helpers ===
+  var USERNAME_RE=/^[\w\u4e00-\u9fa5 .\-]+$/;
 
   // === Helpers ===
   function escapeHtml(s){var d=document.createElement('div');d.appendChild(document.createTextNode(s));return d.innerHTML;}
@@ -406,7 +411,7 @@
   }
 
   // === Progress ===
-  async function loadProgress(){if(!state.username)return;try{var r=await fetch('/api/progress/'+encodeURIComponent(state.username));if(!r.ok)return;state.progress=await r.json();updateProgressUI();}catch(e){console.error('loadProgress',e);}}
+  async function loadProgress(){if(!state.username)return;try{var r=await fetch('/api/progress/'+encodeURIComponent(state.username));if(!r.ok){console.warn('loadProgress status',r.status);return;}state.progress=await r.json();updateProgressUI();}catch(e){console.error('loadProgress',e);}}
   function updateProgressUI(){if(!state.progress)return;progressIndicator.textContent=state.progress.completed_count+'/'+state.progress.total_blocks;progressIndicator.style.display='';renderBlockStatusChips();}
 
   function renderBlockStatusChips(){
@@ -425,7 +430,7 @@
   function initCharts(){conversation.querySelectorAll('.chart-card').forEach(function(card){if(card.dataset.chartInitialized)return;card.dataset.chartInitialized='1';var js=card.dataset.chart;if(!js)return;try{var cfg=JSON.parse(js),cv=card.querySelector('canvas');if(!cv)return;var ac=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()||'#1a5c5c',im=getComputedStyle(document.documentElement).getPropertyValue('--ink-mute').trim()||'#6b6560';if(cfg.data&&cfg.data.datasets)cfg.data.datasets.forEach(function(ds){if(!ds.borderColor)ds.borderColor=ac;if(!ds.backgroundColor)ds.backgroundColor=ac+'33';if(!ds.pointBackgroundColor)ds.pointBackgroundColor=ac;if(!ds.pointBorderColor)ds.pointBorderColor='#fff';if(ds.tension==null)ds.tension=0.3;});if(!cfg.options)cfg.options={};cfg.options.responsive=true;cfg.options.maintainAspectRatio=true;if(!cfg.options.scales)cfg.options.scales={x:{grid:{color:im+'22'},ticks:{color:im}},y:{grid:{color:im+'22'},ticks:{color:im}}};new Chart(cv,cfg);}catch(e){card.innerHTML='<p class="error-message" style="padding:12px;">'+escapeHtml(t('chartRenderError'))+'</p>';}});}
 
   // === Progress Write ===
-  async function writeProgress(slug,st,ml){if(!state.username)return;try{var b={block_slug:slug};if(st)b.status=st;if(ml!=null)b.mastery_level=ml;var r=await fetch('/api/progress/'+encodeURIComponent(state.username),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});if(!r.ok)return;state.progress=await r.json();updateProgressUI();}catch(e){console.error('writeProgress',e);}}
+  async function writeProgress(slug,st,ml){if(!state.username)return;try{var b={block_slug:slug};if(st)b.status=st;if(ml!=null)b.mastery_level=ml;var r=await fetch('/api/progress/'+encodeURIComponent(state.username),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});if(!r.ok){console.warn('writeProgress status',r.status);return;}state.progress=await r.json();updateProgressUI();}catch(e){console.error('writeProgress',e);}}
 
   // === Messages ===
   function addUserMessage(t,na){var m=document.createElement('div');m.className='message user-message';if(na)m.style.animation='none';var c=document.createElement('div');c.className='message-content';c.innerHTML='<p>'+escapeHtml(t)+'</p>';m.appendChild(c);conversation.appendChild(m);}
@@ -518,7 +523,7 @@
   // === Username ===
   function hideOverlay(){overlay.classList.add('hidden');setTimeout(function(){inputField.focus();},250);}
   function onUserLogin(name){state.username=name;navUser.textContent=name;lsSet('username',name);hideOverlay();loadBlocks();loadProgress();restoreSession();newConvButton.style.display='';}
-  usernameForm.addEventListener('submit',function(e){e.preventDefault();var n=usernameInput.value.trim();if(n)onUserLogin(n);});
+  usernameForm.addEventListener('submit',function(e){e.preventDefault();usernameError.style.display='none';var n=usernameInput.value.trim();if(!n)return;if(!USERNAME_RE.test(n)){usernameError.textContent=t('invalidUsername');usernameError.style.display='';return;}onUserLogin(n);});
 
   // === Init ===
   var savedTheme=lsGet('theme','eye-protection');

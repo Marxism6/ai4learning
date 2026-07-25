@@ -181,7 +181,7 @@
       data.models.forEach(function(m){var o=document.createElement('option');o.value=m;modelList.appendChild(o);});
       if(!modelInput.value&&data.models.length>0)modelInput.value=data.models[0];
       detectModelsBtn.textContent=tf('detectModelsDone')(data.models.length);
-    }catch(err){detectModelsBtn.textContent=t('detectModelsFail');}
+    }catch(err){addErrorMessage(t('errorPrefix')+err.message);detectModelsBtn.textContent=t('detectModelsFail');}
     setTimeout(function(){detectModelsBtn.disabled=false;detectModelsBtn.textContent=t('detectModels');},2000);
   });
 

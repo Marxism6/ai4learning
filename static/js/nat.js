@@ -82,5 +82,22 @@ window.NAT = (function () {
     return '';
   };
 
+  N.triggerMemoryReview = function (reply) {
+    if (!N.state.memoryEnabled || !N.state.memModel) return;
+    var enc = encodeURIComponent(N.state.username);
+    var recent = N.state.history.slice(-6);
+    fetch('/api/memory/review/' + enc, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mem_model: N.state.memModel,
+        mem_key: N.lsGet('api-key', ''),
+        mem_base: N.lsGet('api-base', ''),
+        recent_history: recent,
+        block_slug: N.state.blockSlug || '',
+      }),
+    }).catch(function () { /* fire-and-forget, never block UI */ });
+  };
+
   return N;
 })();

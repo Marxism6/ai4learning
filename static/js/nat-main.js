@@ -40,8 +40,26 @@
     N.loadBlocks(); N.loadProgress(); N.restoreSession(); N.els.newConvButton.style.display = '';
   };
 
+  N.logout = function () {
+    if (!confirm(N.t('logoutConfirm'))) return;
+    N.archiveCurrentSession();
+    N.lsRemove('username');
+    N.lsRemove('session-' + N.state.username);
+    N.state.username = null; N.state.history = []; N.state.blockSlug = null; N.state.blocks = null; N.state.progress = null; N.state.memoryInjected = false;
+    N.els.conversation.querySelectorAll('.message').forEach(function (el) { if (el.dataset.message !== 'welcome') el.remove(); });
+    var w = N.els.conversation.querySelector('[data-message="welcome"]'); if (w) w.style.display = '';
+    N.els.navUser.textContent = '';
+    N.els.newConvButton.style.display = 'none';
+    N.els.progressIndicator.style.display = 'none';
+    N.els.blockStatus.style.display = 'none';
+    N.els.overlay.classList.remove('hidden');
+    N.els.usernameInput.value = ''; N.els.usernameInput.focus();
+    N.updateBlockSelectorLabel();
+  };
+
   // ====== Bind all events ======
   N.bindAllEvents = function () {
+    N.els.navUser.addEventListener('click', N.logout);
     N.els.inputField.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); N.handleSend(); } });
     N.els.sendButton.addEventListener('click', N.handleSend);
     N.els.newConvButton.addEventListener('click', N.newConversation);

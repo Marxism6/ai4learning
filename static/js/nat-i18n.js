@@ -8,6 +8,7 @@
   N.I18N = {
     zh: {
       pageTitle:'数值分析辅导', brand:'数值分析辅导', chatTab:'对话', welcomeTitle:'欢迎使用数值分析辅导工具',
+      logoutConfirm:'确定要切换账号吗？当前对话将被存档。',
       welcomeBody:'我将通过苏格拉底式引导帮助你掌握数值方法。从顶部选择一个知识块，或直接输入你的问题。',
       inputPlaceholder:'输入你的答案或问题...', newConv:'+ 新对话', newConvTitle:'新对话',
       memLabel:'跨会话记忆', blockStatus:'学习进度', uploadTitle:'上传题目截图',
@@ -37,6 +38,7 @@
     },
     en: {
       pageTitle:'Numerical Analysis Tutor', brand:'NUMERICAL ANALYSIS TUTOR', chatTab:'CHAT',
+      logoutConfirm:'Switch account? Current conversation will be archived.',
       welcomeTitle:'Welcome to the Numerical Analysis Tutor',
       welcomeBody:"I'm here to help you master numerical methods through guided Socratic dialogue.",
       inputPlaceholder:'Type your answer or question...', newConv:'+ NEW', newConvTitle:'New Conversation',

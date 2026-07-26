@@ -805,7 +805,9 @@ body {
   line-height: 1.45;
   color: var(--nav-mute);
   white-space: nowrap;
+  cursor: pointer;
 }
+.nav-user:hover { color: var(--accent); }
 
 /* === New Conversation Button === */
 .btn-new-conv {

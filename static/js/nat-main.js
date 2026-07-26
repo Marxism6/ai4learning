@@ -37,8 +37,10 @@
   N.hideOverlay = function () { N.els.overlay.classList.add('hidden'); setTimeout(function () { N.els.inputField.focus(); }, 250); };
   N.onUserLogin = function (name) {
     N.state.username = name; N.els.navUser.textContent = name; N.lsSet('username', name); N.hideOverlay();
-    N.loadBlocks(); N.loadProgress(); N.restoreSession(); N.els.newConvButton.style.display = '';
+    N.state.memoryEnabled = N.lsGet('memory-enable-' + name, '0') === '1';
+    N.state.memModel = N.lsGet('mem-model-' + name, '');
     N.loadSettings();
+    N.loadBlocks(); N.loadProgress(); N.restoreSession(); N.els.newConvButton.style.display = '';
   };
 
   N.logout = function () {

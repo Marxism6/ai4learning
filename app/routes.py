@@ -9,7 +9,6 @@ from typing import Literal
 from app.prompts import get_system_prompt
 from app.blocks import BLOCKS, get_block_context
 from app.progress import get_progress, get_completed_count, update_block_progress
-from app.settings import get_settings, save_settings as persist_settings
 from app.memory import save_session, list_sessions, get_session, delete_session, clear_sessions, get_memory_context
 from app.llm import LLMClient
 
@@ -17,25 +16,6 @@ router = APIRouter()
 
 
 # === Settings ===
-
-class SettingsRequest(BaseModel):
-    api_key: str = ""
-    model: str = ""
-    api_base: str = ""
-    memory_enabled: bool = False
-    mem_model: str = ""
-
-
-@router.get("/settings/{username}")
-async def read_settings(username: str):
-    """Get a user's settings (API key, model, API base, memory prefs)."""
-    return get_settings(username)
-
-
-@router.post("/settings/{username}")
-async def write_settings(username: str, req: SettingsRequest):
-    """Save a user's settings."""
-    return persist_settings(username, req.model_dump())
 
 router = APIRouter()
 

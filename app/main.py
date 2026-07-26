@@ -59,7 +59,7 @@ def run():
         host="0.0.0.0",
         port=8000,
         reload=True,
-        reload_excludes=["data", ".scratch", ".git", "node_modules"],
+        reload_dirs=["app", "static", "tests"],
     )
 
 

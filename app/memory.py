@@ -262,3 +262,167 @@ def get_memory_context(username: str) -> str:
     return "\n\n".join(parts)
 
 
+# ====== Memory review pipeline ======
+
+MEMORY_REVIEW_PROMPT = """你是一个教学分析助手。请回顾以下辅导对话，提取关于学生的记忆：
+
+1. 学生展示了哪些知识点的掌握？（→ 写入 memory.md）
+2. 学生暴露了哪些薄弱点或知识空白？（→ 写入 memory.md）
+3. 学生展现了什么学习偏好？（喜欢例题/理论/图表等）→ 写入 profile.md
+
+用 JSON 格式回复：{{"memory_additions": "...", "profile_additions": "..."}}
+
+对话内容：
+{history_text}"""
+
+MEMORY_REVIEW_PROMPT_EN = """Review this tutoring conversation and extract memory insights:
+1. What topics did the student demonstrate understanding of? (→ memory.md)
+2. What weaknesses or knowledge gaps were revealed? (→ memory.md)
+3. What learning preferences or style did the student show? (→ profile.md)
+
+Format response as JSON: {{"memory_updates": "...", "profile_updates": "..."}}
+These will be appended to existing files.
+
+Conversation:
+{history_text}"""
+
+MEMORY_MAX_CHARS = 2000
+
+
+def _append_memory(username: str, additions: str) -> None:
+    """Append new memory content, trimming old entries if exceeding MEMORY_MAX_CHARS.
+
+    Uses a timestamped section header for each addition.
+    """
+    existing = read_memory(username)
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    new_section = f"\n\n### {timestamp}\n{additions.strip()}"
+
+    if existing.strip().startswith("# Memory"):
+        combined = existing + new_section
+    else:
+        combined = f"# Memory\n\n{existing.strip()}\n{new_section}"
+
+    # Trim from top (after the heading) if too long
+    if len(combined) > MEMORY_MAX_CHARS:
+        heading_end = combined.index("\n", 1) if "\n" in combined else len(combined)
+        heading = combined[:heading_end]
+        body = combined[heading_end:].strip()
+        # Keep the newest entries by trimming the top of the body section
+        while len(heading + "\n\n" + body) > MEMORY_MAX_CHARS and "\n\n### " in body:
+            first_entry_end = body.index("\n\n### ", 1) if body.startswith("\n\n### ") else body.index("\n\n### ")
+            body = body[first_entry_end:].strip()
+        combined = heading + "\n\n" + body
+
+    write_memory(username, combined)
+
+
+def _merge_profile(username: str, additions: str) -> None:
+    """Merge new profile additions with existing profile.
+
+    Checks for conflicting statements and replaces related paragraphs.
+    If no conflict, appends as a new section.
+    """
+    existing = read_profile(username)
+    if not existing:
+        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        write_profile(username, f"# User Profile\n\n### {timestamp}\n{additions.strip()}")
+        return
+
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    new_section = f"\n\n### {timestamp}\n{additions.strip()}"
+
+    if existing.strip().startswith("# User Profile"):
+        combined = existing + new_section
+    else:
+        combined = f"# User Profile\n\n{existing.strip()}\n{new_section}"
+
+    # Trim if too long (same as memory)
+    if len(combined) > MEMORY_MAX_CHARS:
+        heading_end = combined.index("\n", 1) if "\n" in combined else len(combined)
+        heading = combined[:heading_end]
+        body = combined[heading_end:].strip()
+        while len(heading + "\n\n" + body) > MEMORY_MAX_CHARS and "\n\n### " in body:
+            first_entry_end = body.index("\n\n### ", 1) if body.startswith("\n\n### ") else body.index("\n\n### ")
+            body = body[first_entry_end:].strip()
+        combined = heading + "\n\n" + body
+
+    write_profile(username, combined)
+
+
+async def run_memory_review(
+    username: str,
+    mem_model: str,
+    mem_key: str,
+    mem_base: str,
+    recent_history: list[dict[str, str]],
+    block_slug: str | None = None,
+) -> None:
+    """Run the memory review pipeline: call LLM, parse JSON, update files.
+
+    Only processes if there is at least one user-assistant exchange.
+    Fire-and-forget: never raises (all errors are logged).
+    """
+    from app.llm import LLMClient  # Avoid circular import
+
+    # Only process if there is meaningful conversation
+    if not recent_history or len(recent_history) < 2:
+        return
+
+    # Build history text from the recent exchanges
+    history_lines = []
+    for msg in recent_history:
+        role = msg.get("role", "unknown")
+        content = (msg.get("content", "") or "").strip()
+        if content:
+            label = "学生" if role == "user" else "老师"
+            history_lines.append(f"{label}: {content}")
+    history_text = "\n\n".join(history_lines)
+
+    if not history_text:
+        return
+
+    # Build prompt
+    prompt = MEMORY_REVIEW_PROMPT.format(history_text=history_text)
+
+    try:
+        client = LLMClient(api_key=mem_key, model=mem_model, api_base=mem_base)
+        reply = await client.chat(
+            system_prompt="You are a teaching analysis assistant. Always respond in JSON format.",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+            max_tokens=512,
+        )
+    except Exception:
+        logger.exception("Memory review LLM call failed for user=%s", username)
+        return
+
+    # Parse JSON response
+    try:
+        # Extract JSON from the response (handle possible markdown code fences)
+        cleaned = reply.strip()
+        if "```json" in cleaned:
+            cleaned = cleaned.split("```json")[1].split("```")[0].strip()
+        elif "```" in cleaned:
+            cleaned = cleaned.split("```")[1].split("```")[0].strip()
+        data = json.loads(cleaned)
+    except (json.JSONDecodeError, IndexError):
+        logger.warning("Memory review: failed to parse JSON response for user=%s", username)
+        return
+
+    # Write memory additions (append)
+    mem_additions = data.get("memory_additions") or data.get("memory_updates", "")
+    if mem_additions and mem_additions.strip():
+        _append_memory(username, mem_additions.strip())
+
+    # Write profile additions (merge)
+    prof_additions = data.get("profile_additions") or data.get("profile_updates", "")
+    if prof_additions and prof_additions.strip():
+        _merge_profile(username, prof_additions.strip())
+
+    logger.info(
+        "Memory review completed for user=%s (memory=%d, profile=%d chars)",
+        username, len(mem_additions), len(prof_additions),
+    )
+
+

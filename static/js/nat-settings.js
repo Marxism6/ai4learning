@@ -32,7 +32,8 @@
     N.lsSet('api-key', N.els.apiKeyInput.value.trim());
     N.lsSet('model', N.els.modelInput.value.trim());
     N.lsSet('api-base', N.els.apiBaseInput.value.trim());
-    N.lsSet('mem-model', N.els.memModelInput.value.trim());
+    N.state.memModel = N.els.memModelInput.value.trim();
+    N.lsSet('mem-model', N.state.memModel);
   };
   N.openSettings = function () {
     if (!N.state.username) return;

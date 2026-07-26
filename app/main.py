@@ -54,7 +54,13 @@ async def health():
 def run():
     """Entry point for `uv run serve`."""
     import uvicorn
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(
+        "app.main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        reload_excludes=["data", ".scratch", ".git", "node_modules"],
+    )
 
 
 if __name__ == "__main__":

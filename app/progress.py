@@ -1,6 +1,6 @@
-"""User progress persistence — JSON file per user in data/ directory.
+"""User progress persistence — JSON file per user in data/<username>/ directory.
 
-Each user's progress is stored in data/<username>.json with the following shape:
+Each user's progress is stored in data/<username>/progress.json with the following shape:
 
 {
   "username": "...",
@@ -38,12 +38,17 @@ def _user_path(username: str) -> str:
     safe = "".join(c for c in username if c.isalnum() or c in "._- ")
     if not safe:
         safe = "anonymous"
-    return os.path.join(DATA_DIR, f"{safe}.json")
+    return os.path.join(DATA_DIR, safe, "progress.json")
 
 
-def _ensure_data_dir():
-    """Create the data directory if it doesn't exist."""
+def _ensure_data_dir(username: str | None = None):
+    """Create the data directory (and user subdirectory if username given) if they don't exist."""
     os.makedirs(DATA_DIR, exist_ok=True)
+    if username:
+        safe = "".join(c for c in username if c.isalnum() or c in "._- ")
+        if not safe:
+            safe = "anonymous"
+        os.makedirs(os.path.join(DATA_DIR, safe), exist_ok=True)
 
 
 def get_progress(username: str) -> dict:
@@ -52,7 +57,7 @@ def get_progress(username: str) -> dict:
     Returns the full progress dict. Creates a default progress entry
     for any blocks not yet recorded.
     """
-    _ensure_data_dir()
+    _ensure_data_dir(username)
     path = _user_path(username)
 
     if os.path.exists(path):
@@ -115,7 +120,7 @@ def update_block_progress(
         if block["status"] == "not-started":
             block["status"] = "in-progress"
 
-    _ensure_data_dir()
+    _ensure_data_dir(username)
     path = _user_path(username)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)

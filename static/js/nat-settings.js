@@ -14,18 +14,25 @@
     var btns = N.els.settingsThemeToggle.querySelectorAll('.settings-option');
     btns.forEach(function (b) { b.classList.toggle('active', b.dataset.theme === N.state.theme); });
   };
-  N.syncSettingsMemoryUI = function () {}; // 开关已隐藏，no-op
+  N.syncSettingsMemoryUI = function () {
+    N.els.settingsMemoryCheck.checked = N.state.memoryEnabled;
+    var sec = document.getElementById('settingsMemorySection');
+    if (sec) sec.style.display = N.state.memoryEnabled ? '' : 'none';
+    N.els.memModelInput.value = N.state.memModel || '';
+  };
 
   // ====== Settings panel core ======
   N.loadSettings = function () {
     N.els.apiKeyInput.value = N.lsGet('api-key', '');
     N.els.modelInput.value = N.lsGet('model', '');
     N.els.apiBaseInput.value = N.lsGet('api-base', '');
+    N.els.memModelInput.value = N.lsGet('mem-model', '');
   };
   N.saveSettings = function () {
     N.lsSet('api-key', N.els.apiKeyInput.value.trim());
     N.lsSet('model', N.els.modelInput.value.trim());
     N.lsSet('api-base', N.els.apiBaseInput.value.trim());
+    N.lsSet('mem-model', N.els.memModelInput.value.trim());
   };
   N.openSettings = function () {
     if (!N.state.username) return;
@@ -56,7 +63,12 @@
       document.documentElement.setAttribute('data-theme', N.state.theme);
       N.lsSet('theme', N.state.theme); N.syncSettingsThemeUI();
     });
-    // 跨会话记忆默认开启，开关已隐藏 — 无需事件绑定
+    N.els.settingsMemoryCheck.addEventListener('change', function () {
+      N.state.memoryEnabled = N.els.settingsMemoryCheck.checked;
+      N.lsSet('memory-enable', N.state.memoryEnabled ? '1' : '0');
+      var sec = document.getElementById('settingsMemorySection');
+      if (sec) sec.style.display = N.state.memoryEnabled ? '' : 'none';
+    });
     N.els.settingsButton.addEventListener('click', N.openSettings);
     N.els.settingsClose.addEventListener('click', N.closeSettings);
     N.els.settingsSave.addEventListener('click', function () { N.saveSettings(); N.closeSettings(); });

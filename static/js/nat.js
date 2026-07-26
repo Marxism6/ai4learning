@@ -11,7 +11,7 @@ window.NAT = (function () {
   N.state = {
     username: null, history: [], isLoading: false, theme: 'eye-protection',
     blockSlug: null, blocks: null, progress: null,
-    memoryEnabled: false, memoryInjected: false, lang: 'zh', viewingHistory: false,
+    memoryEnabled: false, memModel: '', memoryInjected: false, lang: 'zh', viewingHistory: false,
   };
 
   // ====== Shared constants ======
@@ -41,7 +41,8 @@ window.NAT = (function () {
     blockSelectorBtn: $('blockSelectorBtn'), blockSelectorLabel: $('blockSelectorLabel'),
     blockSelectorMenu: $('blockSelectorMenu'),
     settingsLangToggle: $('settingsLangToggle'), settingsThemeToggle: $('settingsThemeToggle'),
-    // settingsMemoryCheck removed — memory always on
+    settingsMemoryCheck: $('settingsMemoryCheck'),
+    memModelInput: $('memModelInput'),
     historyOverlay: $('historyOverlay'), historyList: $('historyList'),
     historyButton: $('historyButton'), historyClose: $('historyClose'),
     clearHistoryBtn: $('clearHistoryBtn'), historyViewBar: $('historyViewBar'),

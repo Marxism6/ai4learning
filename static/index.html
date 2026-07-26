@@ -44,7 +44,17 @@
         <button class="settings-option" data-theme="standard" data-i18n="modeStd">标准</button>
       </div>
 
-      <!-- 跨会话记忆默认开启，开关已隐藏 -->
+      <label class="settings-label" data-i18n="memNewLabel">AI 记忆系统（Memory）</label>
+      <label class="settings-switch">
+        <input type="checkbox" id="settingsMemoryCheck">
+        <span class="settings-switch-slider"></span>
+      </label>
+
+      <div id="settingsMemorySection" class="settings-memory-section" style="display:none;">
+        <label class="settings-label" data-i18n="memModelLabel">记忆提取模型</label>
+        <input type="text" class="settings-input" id="memModelInput" data-i18n-placeholder="memModelPlaceholder" placeholder="deepseek-chat" maxlength="120">
+        <p class="body-sm settings-hint" data-i18n="memModelHint">用于后台记忆提取的廉价模型，不影响主对话质量</p>
+      </div>
 
       <hr class="settings-divider">
 

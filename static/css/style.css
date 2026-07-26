@@ -1201,6 +1201,13 @@ body {
   margin-top: 4px;
 }
 
+.settings-memory-section {
+  margin-top: 8px;
+}
+.settings-memory-section .settings-input {
+  margin-top: 4px;
+}
+
 /* === Block Selector Dropdown === */
 .block-selector {
   position: relative;

@@ -38,6 +38,7 @@
   N.onUserLogin = function (name) {
     N.state.username = name; N.els.navUser.textContent = name; N.lsSet('username', name); N.hideOverlay();
     N.loadBlocks(); N.loadProgress(); N.restoreSession(); N.els.newConvButton.style.display = '';
+    N.loadSettings();
   };
 
   N.logout = function () {
@@ -85,8 +86,6 @@
     var savedTheme = N.lsGet('theme', 'eye-protection');
     if (savedTheme === 'eye-protection' || savedTheme === 'standard') { N.state.theme = savedTheme; document.documentElement.setAttribute('data-theme', savedTheme); }
     N.state.lang = N.lsGet('lang', 'zh'); N.applyLanguage();
-    N.state.memoryEnabled = N.lsGet('memory-enable', '0') === '1';
-  N.state.memModel = N.lsGet('mem-model', '');
     N.bindAllEvents();
     var savedUsername = N.lsGet('username', null);
     if (savedUsername) N.onUserLogin(savedUsername); else N.els.usernameInput.focus();

@@ -12,6 +12,7 @@ window.NAT = (function () {
     username: null, history: [], isLoading: false, theme: 'eye-protection',
     blockSlug: null, blocks: null, progress: null,
     memoryEnabled: false, memModel: '', memoryInjected: false, lang: 'zh', viewingHistory: false, sessionId: '',
+    apiKey: '', model: '', apiBase: '',
   };
 
   // ====== Shared constants ======
@@ -91,8 +92,8 @@ window.NAT = (function () {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         mem_model: N.state.memModel,
-        mem_key: N.lsGet('api-key', ''),
-        mem_base: N.lsGet('api-base', ''),
+        mem_key: N.state.apiKey,
+        mem_base: N.state.apiBase,
         recent_history: recent,
       }),
     }).catch(function () { /* fire-and-forget, never block UI */ });

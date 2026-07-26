@@ -185,9 +185,9 @@ describe('removeContextMessages', function () {
 
 describe('buildApiHeaders', function () {
   beforeEach(function () {
-    NAT.lsSet('api-key', 'sk-test');
-    NAT.lsSet('model', 'deepseek');
-    NAT.lsSet('api-base', 'https://api.example.com');
+    NAT.state.apiKey = 'sk-test';
+    NAT.state.model = 'deepseek';
+    NAT.state.apiBase = 'https://api.example.com';
   });
 
   it('sets Content-Type', function () {

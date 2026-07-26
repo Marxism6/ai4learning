@@ -7,6 +7,7 @@ from typing import Literal
 from app.prompts import get_system_prompt
 from app.blocks import BLOCKS, get_block_context
 from app.progress import get_progress, get_completed_count, update_block_progress
+from app.memory import save_session, list_sessions, get_session, delete_session, clear_sessions, get_memory_context
 from app.llm import LLMClient
 
 router = APIRouter()
@@ -44,6 +45,14 @@ class ProgressUpdateRequest(BaseModel):
     block_slug: str
     status: Literal["not-started", "in-progress", "mastered"] | None = None
     mastery_level: int | None = None
+
+
+class SessionSaveRequest(BaseModel):
+    block_slug: str | None = None
+    block_title: str = ""
+    message_count: int = 0
+    preview: str = ""
+    history: list[dict[str, str]] = []
 
 
 # === Knowledge Blocks ===
@@ -105,6 +114,18 @@ async def chat(request: ChatRequest, llm: LLMClient = Depends(get_llm_client)):
             "If any of these blocks are prerequisites for the current topic, "
             "assume the student already understands them and proceed directly."
         )
+
+    # Add new memory system context (memory.md + profile.md) at conversation start
+    if not request.history:
+        mem_ctx = get_memory_context(request.username)
+        if mem_ctx:
+            system_prompt += (
+                "\n\n## Student Memory\n"
+                f"{mem_ctx}\n\n"
+                "The above is the AI's accumulated memory about this student. "
+                "Use it to personalize your tutoring: adapt to their level, "
+                "acknowledge their strengths and weaknesses, and respect their preferences."
+            )
 
     # Build conversation history
     messages = list(request.history)
@@ -267,3 +288,60 @@ async def write_progress(username: str, update: ProgressUpdateRequest):
         "completed_count": get_completed_count(username),
         "total_blocks": len(BLOCKS),
     }
+
+
+# === Session Persistence ===
+
+@router.post("/sessions/{username}")
+async def save_user_session(username: str, session: SessionSaveRequest):
+    """Save a conversation session to the server."""
+    import uuid
+    session_id = str(uuid.uuid4())[:8]
+    preview = session.preview
+    if not preview:
+        for m in session.history:
+            if m.get("role") == "assistant":
+                preview = (m.get("content", "") or "")[:60]
+                break
+    save_session(
+        username=username,
+        session_id=session_id,
+        block_slug=session.block_slug,
+        block_title=session.block_title,
+        message_count=session.message_count,
+        preview=preview,
+        history=session.history,
+    )
+    return {"id": session_id, "status": "saved"}
+
+
+@router.get("/sessions/{username}")
+async def list_user_sessions(username: str):
+    """List all saved sessions for a user."""
+    sessions = list_sessions(username)
+    return {"sessions": sessions}
+
+
+@router.get("/sessions/{username}/{session_id}")
+async def get_user_session(username: str, session_id: str):
+    """Get a single session's full data."""
+    session = get_session(username, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return session
+
+
+@router.delete("/sessions/{username}/{session_id}")
+async def delete_user_session(username: str, session_id: str):
+    """Delete a session."""
+    ok = delete_session(username, session_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return {"status": "deleted"}
+
+
+@router.delete("/sessions/{username}")
+async def clear_user_sessions(username: str):
+    """Delete all sessions for a user."""
+    clear_sessions(username)
+    return {"status": "cleared"}

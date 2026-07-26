@@ -348,3 +348,35 @@ async def clear_user_sessions(username: str):
     """Delete all sessions for a user."""
     clear_sessions(username)
     return {"status": "cleared"}
+
+
+# === Memory Review ===
+
+class MemoryReviewRequest(BaseModel):
+    mem_model: str
+    mem_key: str
+    mem_base: str
+    recent_history: list[dict[str, str]]
+    block_slug: str | None = None
+
+
+@router.post("/memory/review/{username}")
+async def memory_review(username: str, req: MemoryReviewRequest):
+    """Trigger an asynchronous memory review for a conversation.
+
+    Uses a separate (cheaper) model config to extract memory insights.
+    Fire-and-forget: returns immediately after dispatching.
+    """
+    from app.memory import run_memory_review
+
+    # Run synchronously in the request handler — it's fast (~1-2s LLM call)
+    # and simpler than background tasks for this use case.
+    await run_memory_review(
+        username=username,
+        mem_model=req.mem_model,
+        mem_key=req.mem_key,
+        mem_base=req.mem_base,
+        recent_history=req.recent_history,
+        block_slug=req.block_slug,
+    )
+    return {"status": "ok"}

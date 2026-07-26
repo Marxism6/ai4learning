@@ -25,7 +25,7 @@
     var userEl = N.addUserMessage(message); N.state.history.push({ role: 'user', content: message }); N.scrollToBottom(); N.setTypingIndicator(true);
     var mem = N.maybeBuildMemory();
     try {
-      var body = { username: N.state.username, message: message, block_slug: N.state.blockSlug, history: N.state.history.slice(0, -1), lang: N.state.lang }; if (mem) body.memory_summary = mem;
+      var body = { username: N.state.username, message: message, block_slug: N.state.blockSlug, history: N.state.history.slice(0, -1), memory_enabled: N.state.memoryEnabled, lang: N.state.lang }; if (mem) body.memory_summary = mem;
       var r = await fetch('/api/chat', { method: 'POST', headers: N.buildApiHeaders({}), body: JSON.stringify(body) });
       if (!r.ok) { var ed = await r.json().catch(function () { return {}; }); if (r.status === 502 && ed.detail && N.isApiKeyError(ed.detail)) { N.setTypingIndicator(false); N.rollbackUserMessage(userEl); N.addErrorMessage(N.t('noKeyError')); N.openSettings(); if (N.els.apiKeyInput) N.els.apiKeyInput.focus(); return; } throw new Error(N.t('serverError') + ': ' + (ed.detail || r.status)); }
       var data = await r.json(), reply = data.reply; N.els.inputField.value = ''; N.setTypingIndicator(false);

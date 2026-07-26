@@ -357,7 +357,6 @@ class MemoryReviewRequest(BaseModel):
     mem_key: str
     mem_base: str
     recent_history: list[dict[str, str]]
-    block_slug: str | None = None
 
 
 @router.post("/memory/review/{username}")
@@ -377,6 +376,5 @@ async def memory_review(username: str, req: MemoryReviewRequest):
         mem_key=req.mem_key,
         mem_base=req.mem_base,
         recent_history=req.recent_history,
-        block_slug=req.block_slug,
     )
     return {"status": "ok"}

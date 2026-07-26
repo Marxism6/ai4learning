@@ -9,11 +9,14 @@ Architecture:
 """
 
 import json
+import logging
 import os
 import sqlite3
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 DATA_DIR = "data"
 
@@ -275,18 +278,17 @@ MEMORY_REVIEW_PROMPT = """你是一个教学分析助手。请回顾以下辅导
 对话内容：
 {history_text}"""
 
-MEMORY_REVIEW_PROMPT_EN = """Review this tutoring conversation and extract memory insights:
-1. What topics did the student demonstrate understanding of? (→ memory.md)
-2. What weaknesses or knowledge gaps were revealed? (→ memory.md)
-3. What learning preferences or style did the student show? (→ profile.md)
-
-Format response as JSON: {{"memory_updates": "...", "profile_updates": "..."}}
-These will be appended to existing files.
-
-Conversation:
-{history_text}"""
-
 MEMORY_MAX_CHARS = 2000
+
+
+def _trim_memory_body(body: str, heading: str, max_chars: int) -> str:
+    """Trim old timestamped entries from the body while keeping the heading."""
+    combined = heading + "\n\n" + body
+    while len(combined) > max_chars and "\n\n### " in body:
+        first_entry_end = body.index("\n\n### ", 1) if body.startswith("\n\n### ") else body.index("\n\n### ")
+        body = body[first_entry_end:].strip()
+        combined = heading + "\n\n" + body
+    return combined
 
 
 def _append_memory(username: str, additions: str) -> None:
@@ -308,11 +310,7 @@ def _append_memory(username: str, additions: str) -> None:
         heading_end = combined.index("\n", 1) if "\n" in combined else len(combined)
         heading = combined[:heading_end]
         body = combined[heading_end:].strip()
-        # Keep the newest entries by trimming the top of the body section
-        while len(heading + "\n\n" + body) > MEMORY_MAX_CHARS and "\n\n### " in body:
-            first_entry_end = body.index("\n\n### ", 1) if body.startswith("\n\n### ") else body.index("\n\n### ")
-            body = body[first_entry_end:].strip()
-        combined = heading + "\n\n" + body
+        combined = _trim_memory_body(body, heading, MEMORY_MAX_CHARS)
 
     write_memory(username, combined)
 
@@ -342,10 +340,7 @@ def _merge_profile(username: str, additions: str) -> None:
         heading_end = combined.index("\n", 1) if "\n" in combined else len(combined)
         heading = combined[:heading_end]
         body = combined[heading_end:].strip()
-        while len(heading + "\n\n" + body) > MEMORY_MAX_CHARS and "\n\n### " in body:
-            first_entry_end = body.index("\n\n### ", 1) if body.startswith("\n\n### ") else body.index("\n\n### ")
-            body = body[first_entry_end:].strip()
-        combined = heading + "\n\n" + body
+        combined = _trim_memory_body(body, heading, MEMORY_MAX_CHARS)
 
     write_profile(username, combined)
 
@@ -356,7 +351,6 @@ async def run_memory_review(
     mem_key: str,
     mem_base: str,
     recent_history: list[dict[str, str]],
-    block_slug: str | None = None,
 ) -> None:
     """Run the memory review pipeline: call LLM, parse JSON, update files.
 

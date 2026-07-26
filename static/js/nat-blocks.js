@@ -93,7 +93,7 @@
       N.setTypingIndicator(false);
       if (!r.ok) { var ed = await r.json().catch(function () { return {}; }); if (r.status === 502 && ed.detail && N.isApiKeyError(ed.detail)) { N.addErrorMessage(N.t('noKeyError')); N.openSettings(); if (N.els.apiKeyInput) N.els.apiKeyInput.focus(); return; } throw new Error(N.t('assessmentFailed') + ': ' + (ed.detail || r.status)); }
       var data = await r.json(), reply = data.reply, html = N.markdownToHtml(reply);
-      N.addAgentMessage(html); N.state.history.push({ role: 'assistant', content: reply }); N.saveSession(); N.triggerMemoryReview(reply); N.initCharts();
+      N.addAgentMessage(html); N.state.history.push({ role: 'assistant', content: reply }); N.saveSession(); N.triggerMemoryReview(); N.initCharts();
       if (N.state.blockSlug && N.MASTERED_MARKER_RE.test(reply)) N.writeProgress(N.state.blockSlug, 'mastered', 3);
     } catch (err) { N.setTypingIndicator(false); N.addErrorMessage(N.t('errorPrefix') + err.message); if (N.isApiKeyError(err.message)) N.openSettings(); }
     finally { N.state.isLoading = false; N.els.inputField.disabled = false; N.els.sendButton.disabled = false; N.scrollToBottom(); }

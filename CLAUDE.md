@@ -80,6 +80,11 @@
 6. 截图：`cdp.send('Page.captureScreenshot', {format:'jpeg', quality:70})` → base64 → `base64 -d > bugpicture/xxx.jpg`
 7. **`$` 字符损坏** → ego-in-wsl 环境中 `$` 被损坏，LaTeX 输入通过 `page.evaluate` 操作 `inputField.value` 或点数学键盘按钮
 8. **daemon 崩溃恢复** → socket 残留无法重启时，先 `ego-in-wsl kill --session bugtest`，sleep 3 再重新启动
+9. **async/await 必需** → `-e` 脚本中 `page.evaluate()` 必须 `await`，否则返回 Promise
+10. **CDP 截图不可用** → `page.cdp` 未定义，改 `ego-in-wsl screenshot`
+11. **waitForSelector 不可用** → snapshot + 轮询替代
+12. **page.fill 不触发 input** → 手动 `dispatchEvent(new Event('input'))`
+13. **超时** → 对话需 40s+ 超时（LLM 响应时间）
 
 ## 测试用 API 配置
 

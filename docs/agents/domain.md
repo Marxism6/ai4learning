@@ -25,9 +25,19 @@ Single-context repo (most repos):
 
 ## Use the glossary's vocabulary
 
-When your output names a domain concept (in an issue title, a refactor proposal, a hypothesis, a test name), use the term as defined in `CONTEXT.md`. Don't drift to synonyms the glossary explicitly avoids.
+Key project concepts:
+- **memory.md**: AI-extracted learning insights per user (topics, weaknesses, preferences)
+- **profile.md**: User learning profile (level, style, goals)
+- **sessions.db**: SQLite conversation history with FTS5 search
+- **progress.json**: Block-level mastery status (not-started/in-progress/mastered)
+- **NAT namespace**: `window.NAT` — all frontend JS modules share state via this
 
-If the concept you need isn't in the glossary yet, that's a signal — either you're inventing language the project doesn't use (reconsider) or there's a real gap (note it for `/domain-modeling`).
+## Domain-specific rules
+
+1. API keys NEVER stored on server — localStorage per-user only
+2. data/ excluded from hot-reload (`reload_dirs` whitelist)
+3. Every test must use new username + check data/ integrity
+4. `/code-review` = mattpocock skill, not gstack `/review`
 
 ## Flag ADR conflicts
 

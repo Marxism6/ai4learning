@@ -14,9 +14,7 @@
     var btns = N.els.settingsThemeToggle.querySelectorAll('.settings-option');
     btns.forEach(function (b) { b.classList.toggle('active', b.dataset.theme === N.state.theme); });
   };
-  N.syncSettingsMemoryUI = function () {
-    N.els.settingsMemoryCheck.checked = N.state.memoryEnabled;
-  };
+  N.syncSettingsMemoryUI = function () {}; // 开关已隐藏，no-op
 
   // ====== Settings panel core ======
   N.loadSettings = function () {
@@ -58,10 +56,7 @@
       document.documentElement.setAttribute('data-theme', N.state.theme);
       N.lsSet('theme', N.state.theme); N.syncSettingsThemeUI();
     });
-    N.els.settingsMemoryCheck.addEventListener('change', function () {
-      N.state.memoryEnabled = N.els.settingsMemoryCheck.checked;
-      N.lsSet('memory', N.state.memoryEnabled ? '1' : '0');
-    });
+    // 跨会话记忆默认开启，开关已隐藏 — 无需事件绑定
     N.els.settingsButton.addEventListener('click', N.openSettings);
     N.els.settingsClose.addEventListener('click', N.closeSettings);
     N.els.settingsSave.addEventListener('click', function () { N.saveSettings(); N.closeSettings(); });

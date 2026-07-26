@@ -41,7 +41,7 @@ window.NAT = (function () {
     blockSelectorBtn: $('blockSelectorBtn'), blockSelectorLabel: $('blockSelectorLabel'),
     blockSelectorMenu: $('blockSelectorMenu'),
     settingsLangToggle: $('settingsLangToggle'), settingsThemeToggle: $('settingsThemeToggle'),
-    settingsMemoryCheck: $('settingsMemoryCheck'),
+    // settingsMemoryCheck removed — memory always on
     historyOverlay: $('historyOverlay'), historyList: $('historyList'),
     historyButton: $('historyButton'), historyClose: $('historyClose'),
     clearHistoryBtn: $('clearHistoryBtn'), historyViewBar: $('historyViewBar'),

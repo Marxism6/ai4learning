@@ -85,7 +85,7 @@
     var savedTheme = N.lsGet('theme', 'eye-protection');
     if (savedTheme === 'eye-protection' || savedTheme === 'standard') { N.state.theme = savedTheme; document.documentElement.setAttribute('data-theme', savedTheme); }
     N.state.lang = N.lsGet('lang', 'zh'); N.applyLanguage();
-    N.state.memoryEnabled = N.lsGet('memory', '0') === '1';
+    N.state.memoryEnabled = true; // 默认开启，设置已隐藏
     N.bindAllEvents();
     var savedUsername = N.lsGet('username', null);
     if (savedUsername) N.onUserLogin(savedUsername); else N.els.usernameInput.focus();

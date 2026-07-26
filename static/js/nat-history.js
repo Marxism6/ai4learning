@@ -15,9 +15,8 @@
     var s = N.lsGetJSON('session-' + N.state.username, null);
     if (!s || !s.history || !s.history.length) return false;
     N.state.history = s.history; N.state.blockSlug = s.blockSlug || null;
-    var w = N.els.conversation.querySelector('[data-message="welcome"]'); if (w) w.style.display = 'none';
-    N.state.history.forEach(function (m) { if (m.role === 'user') N.addUserMessage(m.content, true); else if (m.role === 'assistant') N.addAgentMessage(N.markdownToHtml(m.content), true); });
-    N.updateBlockSelectorLabel(); setTimeout(N.initCharts, 50); return true;
+    // 历史消息不再渲染到对话区，仅保留 state.history 供 LLM 上下文
+    N.updateBlockSelectorLabel(); return true;
   };
 
   // ====== Archive + History ======

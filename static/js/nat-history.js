@@ -7,13 +7,9 @@
 (function (N) {
   'use strict';
 
-  // ====== Session (current working session) ======
-  N.saveSession = function () {
-    if (!N.state.username) return;
-    N.lsSetJSON('session-' + N.state.username, { history: N.state.history, blockSlug: N.state.blockSlug });
-    // POST to server (only if there is content to save)
-    if (!N.state.history.length) return;
-    var enc = encodeURIComponent(N.state.username);
+  // ====== Shared session payload builder ======
+  N._buildSessionPayload = function () {
+    N.state.sessionId = N.state.sessionId || String(Date.now());
     var block = N.state.blockSlug && N.state.blocks ? N.state.blocks[N.state.blockSlug] : null;
     var preview = '';
     for (var i = 0; i < N.state.history.length; i++) {
@@ -22,16 +18,27 @@
         break;
       }
     }
+    return {
+      session_id: N.state.sessionId,
+      block_slug: N.state.blockSlug || '',
+      block_title: block ? N.localName(block) : N.t('chatTab'),
+      message_count: N.state.history.length,
+      preview: preview,
+      history: N.state.history,
+    };
+  };
+
+  // ====== Session (current working session) ======
+  N.saveSession = function () {
+    if (!N.state.username) return;
+    N.lsSetJSON('session-' + N.state.username, { history: N.state.history, blockSlug: N.state.blockSlug });
+    // POST to server (only if there is content to save)
+    if (!N.state.history.length) return;
+    var enc = encodeURIComponent(N.state.username);
     fetch('/api/sessions/' + enc, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        block_slug: N.state.blockSlug || '',
-        block_title: block ? N.localName(block) : N.t('chatTab'),
-        message_count: N.state.history.length,
-        preview: preview,
-        history: N.state.history,
-      }),
+      body: JSON.stringify(N._buildSessionPayload()),
     }).catch(function () { /* ignore server save failures */ });
   };
 
@@ -48,14 +55,13 @@
   N.archiveCurrentSession = function () {
     if (!N.state.history.length || !N.state.username) return;
     var key = 'history-' + N.state.username; var list = N.lsGetJSON(key, []);
+    var payload = N._buildSessionPayload();
     var block = N.state.blockSlug && N.state.blocks ? N.state.blocks[N.state.blockSlug] : null;
-    var preview = '';
-    for (var i = 0; i < N.state.history.length; i++) { if (N.state.history[i].role === 'assistant') { preview = (N.state.history[i].content || '').slice(0, 60); break; } }
     var entry = {
       id: String(Date.now()), timestamp: new Date().toISOString(),
       blockSlug: N.state.blockSlug,
       blockTitle: block ? N.localName(block) : N.t('chatTab'),
-      messageCount: N.state.history.length, preview: preview, history: N.state.history,
+      messageCount: N.state.history.length, preview: payload.preview, history: N.state.history,
     };
     // Save to localStorage (backup)
     list.unshift(entry);
@@ -65,13 +71,7 @@
     fetch('/api/sessions/' + enc, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        block_slug: entry.blockSlug || '',
-        block_title: entry.blockTitle,
-        message_count: entry.messageCount,
-        preview: entry.preview,
-        history: entry.history,
-      }),
+      body: JSON.stringify(payload),
     }).catch(function () { /* ignore server save failures */ });
   };
 
@@ -154,7 +154,7 @@
 
   N.newConversation = function () {
     N.archiveCurrentSession();
-    N.state.history = []; N.state.blockSlug = null; N.state.memoryInjected = false; N.state.viewingHistory = false;
+    N.state.history = []; N.state.blockSlug = null; N.state.memoryInjected = false; N.state.viewingHistory = false; N.state.sessionId = '';
     N.els.inputField.disabled = false; N.els.sendButton.disabled = false; N.els.uploadButton.disabled = false;
     N.els.historyViewBar.style.display = 'none';
     N.saveSession(); N.lsRemove('session-' + N.state.username);

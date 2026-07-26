@@ -11,7 +11,7 @@ window.NAT = (function () {
   N.state = {
     username: null, history: [], isLoading: false, theme: 'eye-protection',
     blockSlug: null, blocks: null, progress: null,
-    memoryEnabled: false, memModel: '', memoryInjected: false, lang: 'zh', viewingHistory: false,
+    memoryEnabled: false, memModel: '', memoryInjected: false, lang: 'zh', viewingHistory: false, sessionId: '',
   };
 
   // ====== Shared constants ======

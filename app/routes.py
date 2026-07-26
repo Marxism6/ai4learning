@@ -1,5 +1,7 @@
 """API routes for the Socratic Numerical Analysis Tutor."""
 
+import uuid
+
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File, Form
 from pydantic import BaseModel
 from typing import Literal
@@ -33,6 +35,7 @@ class ChatRequest(BaseModel):
     block_slug: str | None = None
     history: list[dict[str, str]] = []
     memory_summary: str | None = None
+    memory_enabled: bool = False
     lang: Literal["zh", "en"] = "zh"
 
 
@@ -48,6 +51,7 @@ class ProgressUpdateRequest(BaseModel):
 
 
 class SessionSaveRequest(BaseModel):
+    session_id: str = ""
     block_slug: str | None = None
     block_title: str = ""
     message_count: int = 0
@@ -116,7 +120,7 @@ async def chat(request: ChatRequest, llm: LLMClient = Depends(get_llm_client)):
         )
 
     # Add new memory system context (memory.md + profile.md) at conversation start
-    if not request.history:
+    if request.memory_enabled and not request.history:
         mem_ctx = get_memory_context(request.username)
         if mem_ctx:
             system_prompt += (
@@ -294,9 +298,8 @@ async def write_progress(username: str, update: ProgressUpdateRequest):
 
 @router.post("/sessions/{username}")
 async def save_user_session(username: str, session: SessionSaveRequest):
-    """Save a conversation session to the server."""
-    import uuid
-    session_id = str(uuid.uuid4())[:8]
+    """Save a conversation session to the server (idempotent UPSERT via INSERT OR REPLACE)."""
+    session_id = session.session_id or str(uuid.uuid4())[:8]
     preview = session.preview
     if not preview:
         for m in session.history:

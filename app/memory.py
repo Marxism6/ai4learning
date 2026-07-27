@@ -223,16 +223,21 @@ def clear_sessions(username: str) -> None:
 
 
 def search_sessions(username: str, query: str, limit: int = 10) -> list[dict]:
-    """Full-text search sessions. Falls back to LIKE if FTS5 unavailable.
+    """Full-text search sessions via FTS5 + LIKE dual-path merge.
 
-    Multi-word queries are OR-connected for wide recall (FTS5 default is AND).
+    FTS5 uses jieba-cut OR-connect for ranked results. LIKE always runs
+    alongside to catch jieba tokenization misses (e.g. '插值法' not
+    splitting into '插值' + '法', causing '法' to miss). Results are
+    deduplicated, FTS5 first, LIKE supplementing.
     """
     _init_db(username)
     conn = sqlite3.connect(_db_path(username))
-    results = []
-    # Rewrite query: jieba-cut Chinese, then OR-connect
+
+    seen: set[int] = set()
+    results: list[dict] = []
+
+    # Rewrite query: jieba-cut Chinese, then OR-connect for FTS5
     cut_words = list(jieba.cut(query.strip(), cut_all=False))
-    # Filter out pure whitespace/punctuation tokens
     meaningful = [
         w.strip() for w in cut_words
         if w.strip() and not all(c in '，。！？、；：""''（）　' for c in w)
@@ -243,33 +248,41 @@ def search_sessions(username: str, query: str, limit: int = 10) -> list[dict]:
         fts_query = meaningful[0]
     else:
         fts_query = query.strip()
-    rows = []
+
+    # 1. FTS5 first (ranked) — may raise OperationalError if unavailable
     try:
-        # Try FTS5 with jieba tokenizer
-        rows = conn.execute(
+        fts_rows = conn.execute(
             "SELECT s.id, s.block_slug, s.block_title, s.message_count, s.preview, s.created_at "
             "FROM sessions s JOIN sessions_fts f ON s.rowid = f.rowid "
             "WHERE sessions_fts MATCH ? ORDER BY rank LIMIT ?",
             (fts_query, limit),
         ).fetchall()
+        for r in fts_rows:
+            results.append({
+                "id": r[0], "blockSlug": r[1], "blockTitle": r[2],
+                "messageCount": r[3], "preview": r[4], "timestamp": r[5],
+            })
+            seen.add(r[0])
     except sqlite3.OperationalError:
-        pass  # FTS5 unavailable; rows stays empty, will fall through to LIKE below
+        pass  # FTS5 unavailable — LIKE will cover everything below
 
-    # If FTS5 returned nothing (possible edge case), fall back to LIKE
-    if not rows:
-        pattern = f"%{query}%"
-        rows = conn.execute(
-            "SELECT id, block_slug, block_title, message_count, preview, created_at "
-            "FROM sessions WHERE preview LIKE ? OR history_json LIKE ? ORDER BY created_at DESC LIMIT ?",
-            (pattern, pattern, limit),
-        ).fetchall()
+    # 2. LIKE supplement (always runs, covers jieba tokenization misses)
+    pattern = f"%{query}%"
+    like_rows = conn.execute(
+        "SELECT id, block_slug, block_title, message_count, preview, created_at "
+        "FROM sessions WHERE (preview LIKE ? OR history_json LIKE ?) ORDER BY created_at DESC LIMIT ?",
+        (pattern, pattern, limit),
+    ).fetchall()
+    for r in like_rows:
+        if r[0] not in seen:
+            results.append({
+                "id": r[0], "blockSlug": r[1], "blockTitle": r[2],
+                "messageCount": r[3], "preview": r[4], "timestamp": r[5],
+            })
+            seen.add(r[0])
+
     conn.close()
-    for r in rows:
-        results.append({
-            "id": r[0], "blockSlug": r[1], "blockTitle": r[2],
-            "messageCount": r[3], "preview": r[4], "timestamp": r[5],
-        })
-    return results
+    return results[:limit]
 
 
 # ====== Memory file management ======

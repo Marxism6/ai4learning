@@ -15,7 +15,7 @@
 | 启动 | `uv run serve` → http://localhost:8000 |
 | 后端测试 | `uv run pytest tests/ -q`（71 个，只覆盖后端 API） |
 | 前端验证 | **必须用 ego-in-wsl 浏览器实测**（pytest 覆盖不到前端渲染） |
-| 当前版本 | v0.2.1（已发布） |
+| 当前版本 | v0.2.2（已发布） |
 | PRD | GitHub Issue #1 |
 | 设计系统 | DESIGN.md（不可修改） |
 | 前端 JS 架构 | NAT namespace 模块（8 个 JS 文件，零构建工具，见「chat.js 模块化」节） |
@@ -25,10 +25,60 @@
 | 角色 | 由谁担任 | 职责 |
 |------|---------|------|
 | 策划者（Orchestrator） | Claude Code（接手者） | 查证、triage、写方案、验证、决定优先级 |
-| 执行者（Subagent） | Claude Code 的 Task subagent（默认 sonnet） | 浏览器找 bug、按方案修 bug |
+| 执行者（Subagent） | Claude Code 的 Task subagent（默认 sonnet） | 浏览器找 bug、按方案修 bug、按方案实现新功能 |
 | 维护者 | 用户（Marxism6） | 关键决策确认（wontfix / push / release） |
 
 **权限边界**（沿用通用工作流）：策划者可本地修改、运行测试、写方案；**push、wontfix、打 tag、release 必须向维护者确认**。
+
+## 新功能开发流程
+
+```
+新功能开发（策划者设计 + 执行者实施）
+│
+├── 1. 策划者分析需求 → 写功能方案（.scratch/feature-<名称>.md）
+│   ├── 目标、成功标准、约束
+│   ├── 涉及文件清单
+│   ├── 分步骤实施计划（每步可独立验证）
+│   └── 验证方式
+│
+├── 2. 可 fan-out 的子任务 → 并行派 subagent
+│   ├── 同一文件不派多个 agent（避免冲突）
+│   ├── 每个 subagent 给出：修改范围、具体指令、验证命令
+│   └── 顺序依赖的步骤串行派发
+│
+├── 3. 策划者验证：uv run pytest + curl + 代码审查
+│   ├── 功能是否按方案实现？
+│   ├── 测试是否全部通过？
+│   └── 是否有意外修改？
+│
+└── 4. 验证通过 → 自动进入 debug 迭代循环（内循环）
+    └── 验证失败 → 写修复子方案 → 派 subagent 修复 → 回到步骤 3
+```
+
+### 新功能方案模板
+
+```markdown
+# feature: <名称>
+
+## 目标
+## 成功标准
+## 约束
+## 涉及文件
+## 实施步骤
+
+### Step 1: <步骤名>
+- 修改文件：<路径>
+- 具体改动：<描述>
+- 验证：<命令>
+
+### Step 2: <步骤名>
+...
+
+## 验证
+1. uv run pytest tests/ -q
+2. curl 验证 API
+3. ego-in-wsl 浏览器实测（如涉及前端）
+```
 
 ## 两重循环（本项目实例）
 

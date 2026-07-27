@@ -29,7 +29,7 @@
       var r = await fetch('/api/chat', { method: 'POST', headers: N.buildApiHeaders({}), body: JSON.stringify(body) });
       if (!r.ok) { var ed = await r.json().catch(function () { return {}; }); if (r.status === 502 && ed.detail && N.isApiKeyError(ed.detail)) { N.setTypingIndicator(false); N.rollbackUserMessage(userEl); N.addErrorMessage(N.t('noKeyError')); N.openSettings(); if (N.els.apiKeyInput) N.els.apiKeyInput.focus(); return; } throw new Error(N.t('serverError') + ': ' + (ed.detail || r.status)); }
       var data = await r.json(), reply = data.reply; N.els.inputField.value = ''; N.setTypingIndicator(false);
-      var html = N.markdownToHtml(reply); N.addAgentMessage(html); N.state.history.push({ role: 'assistant', content: reply }); N.saveSession(); N.triggerMemoryReview(); N.initCharts();
+      var html = N.markdownToHtml(reply); N.addAgentMessage(html); N.state.history.push({ role: 'assistant', content: reply }); N.saveSession(); N.initCharts();
       if (N.state.blockSlug) { if (N.state.history.filter(function (m) { return m.role === 'user'; }).length === 1) N.writeProgress(N.state.blockSlug, 'in-progress'); if (N.MASTERED_MARKER_RE.test(reply)) N.writeProgress(N.state.blockSlug, 'mastered', 3); }
     } catch (err) { N.setTypingIndicator(false); N.rollbackUserMessage(userEl); N.addErrorMessage(N.t('errorPrefix') + err.message); if (N.isApiKeyError(err.message)) N.openSettings(); }
     finally { N.state.isLoading = false; N.els.inputField.disabled = false; N.els.sendButton.disabled = false; N.els.inputField.focus(); N.scrollToBottom(); }

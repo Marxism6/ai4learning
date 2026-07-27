@@ -73,6 +73,11 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     }).catch(function () { /* ignore server save failures */ });
+
+    // 存档时触发一次记忆review（使用完整历史，非每条消息）
+    if (N.state.history.length >= 2) {
+      N.triggerMemoryReview(N.state.history);
+    }
   };
 
   function renderHistoryListFromEntries(list) {

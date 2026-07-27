@@ -93,11 +93,13 @@
     });
   }
 
-  N.renderHistoryList = function () {
+  N.renderHistoryList = function (query) {
     if (!N.state.username) { N.els.historyList.innerHTML = '<p class="body-sm" style="color:var(--ink-faint);padding:12px;">' + N.t('emptyHistory') + '</p>'; return; }
-    // Server-first: fetch session list from server
     var enc = encodeURIComponent(N.state.username);
-    fetch('/api/sessions/' + enc)
+    // If query provided, use search endpoint
+    var url = query ? '/api/sessions/' + enc + '/search?q=' + encodeURIComponent(query)
+      : '/api/sessions/' + enc;
+    fetch(url)
       .then(function (r) {
         if (!r.ok) throw new Error('server fetch failed');
         return r.json();
@@ -106,11 +108,16 @@
         renderHistoryListFromEntries(data.sessions || []);
       })
       .catch(function () {
-        // Fallback to localStorage
+        if (query) { renderHistoryListFromEntries([]); return; } // Don't fallback for search
         var key = 'history-' + N.state.username;
         var list = N.lsGetJSON(key, []);
         renderHistoryListFromEntries(list);
       });
+  };
+
+  N.searchHistory = function () {
+    var q = (N.els.historySearchInput.value || '').trim();
+    N.renderHistoryList(q || undefined); // undefined → list all, '' → show empty
   };
 
   N.viewHistory = function (entry) {
@@ -172,6 +179,10 @@
     N.els.historyButton.addEventListener('click', N.openHistory);
     N.els.historyClose.addEventListener('click', N.closeHistory);
     N.els.historyOverlay.addEventListener('click', function (e) { if (e.target === N.els.historyOverlay) N.closeHistory(); });
+    N.els.historySearchInput.addEventListener('input', function () {
+      var q = N.els.historySearchInput.value.trim();
+      N.renderHistoryList(q || undefined);
+    });
     N.els.clearHistoryBtn.addEventListener('click', function () {
       if (!confirm(N.t('confirmClear'))) return;
       // Delete server data

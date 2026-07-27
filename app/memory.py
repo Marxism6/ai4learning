@@ -51,12 +51,11 @@ def _init_db(username: str):
             created_at TEXT
         )
     """)
-    # Enable FTS5 for full-text search of session content
+    # Enable FTS5 for full-text search (manually synced, not content-sync)
     try:
         conn.execute("""
             CREATE VIRTUAL TABLE IF NOT EXISTS sessions_fts USING fts5(
-                id, block_title, preview, history_json,
-                content='sessions', content_rowid='rowid'
+                block_title, preview, history_json
             )
         """)
     except sqlite3.OperationalError:
@@ -76,7 +75,9 @@ def save_session(
 ) -> None:
     """Save a conversation session to the user's SQLite database."""
     _init_db(username)
-    conn = sqlite3.connect(_db_path(username))
+    path = _db_path(username)
+    conn = sqlite3.connect(path)
+    history_json = json.dumps(history, ensure_ascii=False)
     conn.execute(
         """INSERT OR REPLACE INTO sessions (id, block_slug, block_title, message_count, preview, history_json, created_at)
            VALUES (?, ?, ?, ?, ?, ?, ?)""",
@@ -86,10 +87,20 @@ def save_session(
             block_title,
             message_count,
             preview,
-            json.dumps(history, ensure_ascii=False),
+            history_json,
             datetime.now(timezone.utc).isoformat(),
         ),
     )
+    # Sync FTS5 index: delete old + insert new
+    try:
+        conn.execute("DELETE FROM sessions_fts WHERE rowid = (SELECT rowid FROM sessions WHERE id = ?)", (session_id,))
+        conn.execute(
+            "INSERT INTO sessions_fts(rowid, block_title, preview, history_json) "
+            "SELECT rowid, block_title, preview, history_json FROM sessions WHERE id = ?",
+            (session_id,),
+        )
+    except sqlite3.OperationalError:
+        pass  # FTS5 unavailable, skip
     conn.commit()
     conn.close()
 
@@ -151,6 +162,11 @@ def delete_session(username: str, session_id: str) -> bool:
     _init_db(username)
     conn = sqlite3.connect(_db_path(username))
     try:
+        # Remove from FTS5 index first
+        try:
+            conn.execute("DELETE FROM sessions_fts WHERE rowid = (SELECT rowid FROM sessions WHERE id = ?)", (session_id,))
+        except sqlite3.OperationalError:
+            pass
         cur = conn.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
         conn.commit()
         deleted = cur.rowcount > 0
@@ -166,6 +182,11 @@ def clear_sessions(username: str) -> None:
     conn = sqlite3.connect(_db_path(username))
     try:
         conn.execute("DELETE FROM sessions")
+        # Clean FTS5 index
+        try:
+            conn.execute("DELETE FROM sessions_fts")
+        except sqlite3.OperationalError:
+            pass
         conn.commit()
     except sqlite3.OperationalError:
         pass
@@ -173,17 +194,23 @@ def clear_sessions(username: str) -> None:
 
 
 def search_sessions(username: str, query: str, limit: int = 10) -> list[dict]:
-    """Full-text search sessions. Falls back to LIKE if FTS5 unavailable."""
+    """Full-text search sessions. Falls back to LIKE if FTS5 unavailable.
+
+    Multi-word queries are OR-connected for wide recall (FTS5 default is AND).
+    """
     _init_db(username)
     conn = sqlite3.connect(_db_path(username))
     results = []
+    # Rewrite multi-word queries: "newton convergence" → "newton OR convergence"
+    words = query.strip().split()
+    fts_query = " OR ".join(words) if len(words) > 1 else query.strip()
     try:
         # Try FTS5
         rows = conn.execute(
             "SELECT s.id, s.block_slug, s.block_title, s.message_count, s.preview, s.created_at "
             "FROM sessions s JOIN sessions_fts f ON s.rowid = f.rowid "
             "WHERE sessions_fts MATCH ? ORDER BY rank LIMIT ?",
-            (query, limit),
+            (fts_query, limit),
         ).fetchall()
     except sqlite3.OperationalError:
         # Fallback to simple LIKE
@@ -418,5 +445,102 @@ async def run_memory_review(
         "Memory review completed for user=%s (memory=%d, profile=%d chars)",
         username, len(mem_additions), len(prof_additions),
     )
+
+
+# ====== Cold memory search + summarization ======
+
+COLD_MEMORY_SUMMARY_PROMPT = """你是一个教学回顾助手。请阅读以下历史辅导对话，用 2-3 句中文总结：
+
+1. 学生当时在学习什么主题？
+2. 讨论的关键问题和难点是什么？
+3. 有什么重要结论或进展？
+
+只输出总结文本，不要加标题或前缀。
+
+会话（{title}, {timestamp}）：
+{history_text}"""
+
+
+async def search_and_summarize(
+    username: str,
+    query: str,
+    mem_model: str,
+    mem_key: str,
+    mem_base: str,
+    top_n: int = 3,
+) -> str:
+    """Search cold memory and summarize matching sessions via cheap LLM.
+
+    Returns a formatted string ready for system prompt injection, or empty string
+    if no matches found or LLM call fails.
+    """
+    from app.llm import LLMClient  # Avoid circular import
+
+    matches = search_sessions(username, query, limit=top_n)
+    if not matches:
+        return ""
+
+    # Build summaries for each matching session
+    summaries = []
+    client = LLMClient(api_key=mem_key, model=mem_model, api_base=mem_base)
+
+    for m in matches:
+        full = get_session(username, m["id"])
+        if not full or not full.get("history"):
+            continue
+
+        # Build history text for the prompt
+        lines = []
+        for msg in full["history"]:
+            role = msg.get("role", "unknown")
+            content = (msg.get("content", "") or "").strip()
+            if content:
+                label = "学生" if role == "user" else "老师"
+                lines.append(f"{label}: {content}")
+        history_text = "\n\n".join(lines)
+
+        if not history_text:
+            continue
+
+        prompt = COLD_MEMORY_SUMMARY_PROMPT.format(
+            title=m.get("blockTitle", ""),
+            timestamp=m.get("timestamp", ""),
+            history_text=history_text,
+        )
+
+        try:
+            reply = await client.chat(
+                system_prompt="你是教学回顾助手。只输出总结文本。",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3,
+                max_tokens=256,
+            )
+            summaries.append(f"- [{m['blockTitle']}] {reply.strip()}")
+        except Exception:
+            logger.exception("Cold memory summarization failed for session=%s", m["id"])
+            # Fallback: use preview
+            summaries.append(f"- [{m['blockTitle']}] {m.get('preview', '')}")
+
+    if not summaries:
+        return ""
+
+    return "## Past Conversations\n\n" + "\n".join(summaries)
+
+
+def get_cold_memory_context(username: str, topic_keywords: str) -> str:
+    """Get cold memory context for system prompt injection (no LLM, zero latency).
+
+    Searches sessions.db for past conversations matching topic keywords.
+    Returns a lightweight summary (titles + previews) suitable for inline injection.
+    Does NOT call LLM — returns instantly.
+    """
+    matches = search_sessions(username, topic_keywords, limit=5)
+    if not matches:
+        return ""
+
+    lines = ["## Past Related Conversations"]
+    for m in matches:
+        lines.append(f"- {m['blockTitle']} ({m['messageCount']} msgs): {m['preview'][:80]}")
+    return "\n".join(lines)
 
 

@@ -9,7 +9,7 @@ from typing import Literal
 from app.prompts import get_system_prompt
 from app.blocks import BLOCKS, get_block_context
 from app.progress import get_progress, get_completed_count, update_block_progress
-from app.memory import save_session, list_sessions, get_session, delete_session, clear_sessions, get_memory_context
+from app.memory import save_session, list_sessions, get_session, delete_session, clear_sessions, get_memory_context, search_sessions, search_and_summarize, get_cold_memory_context
 from app.llm import LLMClient
 
 router = APIRouter()
@@ -126,6 +126,7 @@ async def chat(request: ChatRequest, llm: LLMClient = Depends(get_llm_client)):
 
     # Add new memory system context (memory.md + profile.md) at conversation start
     if request.memory_enabled and not request.history:
+        # Hot memory: refined facts from memory.md + profile.md
         mem_ctx = get_memory_context(request.username)
         if mem_ctx:
             system_prompt += (
@@ -135,6 +136,15 @@ async def chat(request: ChatRequest, llm: LLMClient = Depends(get_llm_client)):
                 "Use it to personalize your tutoring: adapt to their level, "
                 "acknowledge their strengths and weaknesses, and respect their preferences."
             )
+        # Cold memory: past conversation titles + previews (zero LLM latency)
+        if request.block_slug:
+            cold_ctx = get_cold_memory_context(request.username, request.block_slug)
+            if cold_ctx:
+                system_prompt += (
+                    "\n\n" + cold_ctx + "\n\n"
+                    "The above are the student's past conversations related to this topic. "
+                    "Use them to reference prior discussions if relevant."
+                )
 
     # Build conversation history
     messages = list(request.history)
@@ -329,6 +339,41 @@ async def list_user_sessions(username: str):
     sessions = list_sessions(username)
     return {"sessions": sessions}
 
+
+# === Session Search (must come before /{session_id} to avoid route conflict) ===
+
+@router.get("/sessions/{username}/search")
+async def search_user_sessions(username: str, q: str = ""):
+    """Full-text search sessions by query string. Multi-word queries use OR recall."""
+    if not q.strip():
+        return {"sessions": []}
+    results = search_sessions(username, q.strip())
+    return {"sessions": results}
+
+
+class SearchSummarizeRequest(BaseModel):
+    query: str
+    mem_model: str
+    mem_key: str
+    mem_base: str
+
+
+@router.post("/sessions/{username}/search-summarize")
+async def summarize_search(username: str, req: SearchSummarizeRequest):
+    """Search cold memory and summarize matching sessions via cheap LLM."""
+    if not req.query.strip():
+        return {"summary": ""}
+    summary = await search_and_summarize(
+        username=username,
+        query=req.query.strip(),
+        mem_model=req.mem_model,
+        mem_key=req.mem_key,
+        mem_base=req.mem_base,
+    )
+    return {"summary": summary}
+
+
+# === Session detail routes ===
 
 @router.get("/sessions/{username}/{session_id}")
 async def get_user_session(username: str, session_id: str):

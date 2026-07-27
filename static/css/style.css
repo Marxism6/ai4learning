@@ -1398,6 +1398,14 @@ body {
   overflow-y: auto;
 }
 
+.history-search-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin: 8px 0;
+}
+.history-search-input { flex: 1; }
+
 .history-list {
   display: flex;
   flex-direction: column;

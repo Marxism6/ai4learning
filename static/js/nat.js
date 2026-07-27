@@ -45,6 +45,7 @@ window.NAT = (function () {
     settingsMemoryCheck: $('settingsMemoryCheck'),
     memModelInput: $('memModelInput'),
     historyOverlay: $('historyOverlay'), historyList: $('historyList'),
+    historySearchInput: $('historySearchInput'),
     historyButton: $('historyButton'), historyClose: $('historyClose'),
     clearHistoryBtn: $('clearHistoryBtn'), historyViewBar: $('historyViewBar'),
     historyBackBtn: $('historyBackBtn'),

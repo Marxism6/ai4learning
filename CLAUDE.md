@@ -15,10 +15,10 @@
 | 启动 | `uv run serve` → http://localhost:8000 |
 | 后端测试 | `uv run pytest tests/ -q`（71 个，只覆盖后端 API） |
 | 前端验证 | **必须用 ego-in-wsl 浏览器实测**（pytest 覆盖不到前端渲染） |
-| 当前版本 | v0.1.0-rc1（已发布） |
+| 当前版本 | v0.2.1（已发布） |
 | PRD | GitHub Issue #1 |
 | 设计系统 | DESIGN.md（不可修改） |
-| 前端 JS 架构 | 命名空间 IIFE，模块化拆分中（见「chat.js 模块化」节） |
+| 前端 JS 架构 | NAT namespace 模块（8 个 JS 文件，零构建工具，见「chat.js 模块化」节） |
 
 ## 角色（本项目）
 
@@ -136,18 +136,22 @@
 ```
 107competition/
 ├── .scratch/
-│   ├── workflow/
-│   │   ├── WORKFLOW.md          # 本文档
-│   │   ├── HANDOFF.md           # 策划者交接文档（当前状态）
-│   │   └── goal-prompt.txt      # /goal 启动提示词
 │   ├── browser-test-prompt.md   # 浏览器测试提示词（含 API key，勿提交）
+│   ├── data-persistence.md      # 持久化机制完整文档
 │   ├── ego-in-wsl-bugs/         # ego-in-wsl 工具本身的使用痛点记录
-│   ├── RELEASE-NOTES-*.md       # Release notes（非活跃，参考用）
+│   ├── RELEASE-NOTES-*.md       # Release notes（参考用）
 │   ├── fix-plan-*.md            # 修复方案（修复完成后删除）
 │   └── feature-*.md             # 功能方案（完成后删除）
 ├── bugpicture/                  # 测试截图（.gitignore）
 ├── DESIGN.md                    # 设计系统（不可改）
 ├── app/                         # FastAPI 后端
+│   ├── main.py                 # 应用入口
+│   ├── routes.py               # API 端点
+│   ├── llm.py                  # LLMClient
+│   ├── prompts.py              # 苏格拉底提示词
+│   ├── blocks.py               # 知识块定义
+│   ├── progress.py             # JSON 进度持久化
+│   └── memory.py               # SQLite 会话 + 记忆系统
 ├── static/                      # 前端
 │   ├── index.html
 │   ├── css/
@@ -159,8 +163,20 @@
 │       ├── nat-blocks.js        # 块选择器 + 进度 chips
 │       ├── nat-math.js          # 数学键盘 + LaTeX
 │       ├── nat-chat.js          # 消息渲染 + API 调用
-│       └── nat-init.js          # 初始化 + 事件绑定 + 用户名
-└── tests/                       # pytest（后端）
+│       └── nat-main.js          # 初始化 + 事件绑定 + 用户名
+├── tests/                       # pytest（后端 71 个）
+│   ├── test_api.py
+│   └── js/                      # Node --test + JSDOM（前端 68 个）
+│       ├── setup.js
+│       ├── nat-utils.test.js
+│       ├── nat-state.test.js
+│       └── nat-latex.test.js
+├── data/                        # 用户数据（已 gitignore）
+│   └── <username>/
+│       ├── progress.json
+│       ├── sessions.db
+│       ├── memory.md
+│       └── profile.md
 ```
 
 ## chat.js 模块化
@@ -172,7 +188,7 @@
 ### 架构原则
 
 - **零构建工具**：纯 `<script>` 标签加载，不引入 npm/esbuild/vite
-- **加载顺序**：各 nat-*.js 按依赖顺序排列在 index.html 中（nat.js → nat-i18n.js → ... → nat-init.js），加载顺序即依赖顺序
+- **加载顺序**：各 nat-*.js 按依赖顺序排列在 index.html 中（nat.js → nat-i18n.js → ... → nat-main.js），加载顺序即依赖顺序
 - **命名空间**：所有模块挂到 `window.NAT`，状态对象 `NAT.state` 跨模块共享
 - **修改时注意**：改一个模块的函数签名时，检查所有调用方（grep 模块名）
 
@@ -188,7 +204,7 @@
 **不要让旧方案文档堆积。** 维护者明确要求：已完成的修复方案、功能方案、bug 报告要及时清理。
 
 - **每轮修复完成并验证后**，删除对应的 `.scratch/fix-plan-*.md` 和 `.scratch/feature-*.md`（issue 已 closed，方案已无用）。
-- **保留**：`browser-test-prompt.md`（活跃测试提示词）、`workflow/`（本工作流文档）。
+- **保留**：`browser-test-prompt.md`（活跃测试提示词）、`data-persistence.md`（持久化机制文档）。
 - 旧的 `handoff.md` 类临时转交文档用完即删。
 - 删除前确认对应 issue 已 closed、修复已 push。
 - `.scratch/` 已 gitignore，删除是本地操作，不影响仓库。
@@ -197,12 +213,9 @@
 ```
 .scratch/
 ├── browser-test-prompt.md     # 活跃测试提示词
+├── data-persistence.md        # 持久化机制文档
 ├── ego-in-wsl-bugs/           # ego-in-wsl 工具痛点记录
-├── RELEASE-NOTES-*.md         # Release notes（保留参考）
-└── workflow/                  # 工作流文档（本目录）
-    ├── WORKFLOW.md
-    ├── HANDOFF.md
-    └── goal-prompt.txt
+└── RELEASE-NOTES-*.md         # Release notes（保留参考）
 ```
 
 新一轮产生的 fix-plan 在修复完成后同样删除，保持目录干净。

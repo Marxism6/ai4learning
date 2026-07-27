@@ -17,7 +17,7 @@ const HTML = `<!DOCTYPE html><html lang="zh" data-theme="eye-protection"><head><
 <div id="blockStatus"><div id="blockStatusHeader"></div><div id="blockStatusBody"></div></div>
 <button id="settingsButton"></button><div id="settingsOverlay"><input id="apiKeyInput"><input id="modelInput"><datalist id="modelList"></datalist><input id="apiBaseInput"><button id="settingsSave"></button><button id="settingsClose"></button><button id="detectModels"></button><div id="settingsLangToggle"><button class="settings-option" data-lang="zh"></button><button class="settings-option" data-lang="en"></button></div><div id="settingsThemeToggle"><button class="settings-option" data-theme="eye-protection"></button><button class="settings-option" data-theme="standard"></button></div><input type="checkbox" id="settingsMemoryCheck"><input type="text" id="memModelInput"><div id="settingsMemorySection"></div></div>
 <button id="blockSelectorBtn"><span id="blockSelectorLabel"></span></button><div id="blockSelectorMenu"></div>
-<div id="historyOverlay"><div id="historyList"></div><button id="historyClose"></button><button id="clearHistoryBtn"></button></div><div id="historyViewBar" style="display:none"><button id="historyBackBtn"></button></div>
+<div id="historyOverlay"><div id="historyList"></div><input id="historySearchInput"><button id="historyClose"></button><button id="clearHistoryBtn"></button></div><div id="historyViewBar" style="display:none"><button id="historyBackBtn"></button></div>
 <button id="historyButton"></button>
 <button id="mathKeyboardBtn"></button><div id="mathPalette"></div>
 <div id="inputPreview" style="display:none"></div>

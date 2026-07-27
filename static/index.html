@@ -78,7 +78,10 @@
   <div class="settings-overlay" id="historyOverlay" style="display:none;">
     <div class="settings-card history-card">
       <div class="settings-title" data-i18n="historyTitle">历史对话</div>
-      <button class="btn-secondary btn-sm" id="clearHistoryBtn" data-i18n="clearHistory">清空历史</button>
+      <div class="history-search-bar">
+        <input type="text" class="settings-input history-search-input" id="historySearchInput" data-i18n-placeholder="searchHistory" placeholder="搜索历史对话...">
+        <button class="btn-secondary btn-sm" id="clearHistoryBtn" data-i18n="clearHistory">清空历史</button>
+      </div>
       <div class="history-list" id="historyList"></div>
       <div class="settings-actions">
         <button class="btn-secondary" id="historyClose" data-i18n="settingsClose">关闭</button>

@@ -7,18 +7,29 @@ import pytest
 from httpx import AsyncClient, ASGITransport
 
 from app.main import app
-from app.progress import DATA_DIR
 
 
 @pytest.fixture(autouse=True)
-def clean_data():
-    """Clean data files before and after each test."""
-    if os.path.exists(DATA_DIR):
-        shutil.rmtree(DATA_DIR)
-    os.makedirs(DATA_DIR, exist_ok=True)
+def clean_data(monkeypatch):
+    """Redirect data dir to a fixed test subdirectory so tests never touch real user data.
+
+    Uses data/_test/ as the test data root — persisted after tests for inspection.
+    Each test run cleans its own data but preserves the directory for review.
+    """
+    import app.progress
+    import app.memory
+
+    # 用测试文件所在目录的绝对路径，避免 cwd 变化影响
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    test_dir = os.path.join(root, "data", "_test")
+    # Clean only test data, not real user data
+    if os.path.exists(test_dir):
+        shutil.rmtree(test_dir)
+    os.makedirs(test_dir, exist_ok=True)
+    monkeypatch.setattr(app.progress, "DATA_DIR", test_dir)
+    monkeypatch.setattr(app.memory, "DATA_DIR", test_dir)
     yield
-    if os.path.exists(DATA_DIR):
-        shutil.rmtree(DATA_DIR)
+    # Test data preserved for user inspection — not deleted
 
 
 @pytest.fixture

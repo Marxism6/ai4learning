@@ -1,9 +1,11 @@
 """Tests for user progress persistence (Ticket 04)."""
 
+import os
+
 import pytest
 
+import app.progress
 from app.progress import (
-    DATA_DIR,
     get_progress,
     update_block_progress,
     get_completed_count,
@@ -12,15 +14,22 @@ from app.progress import (
 
 
 @pytest.fixture(autouse=True)
-def clean_data_dir():
-    """Remove any data files before and after each test to ensure isolation."""
-    import os, shutil
-    if os.path.exists(DATA_DIR):
-        shutil.rmtree(DATA_DIR)
-    os.makedirs(DATA_DIR, exist_ok=True)
+def clean_data_dir(monkeypatch):
+    """Use data/_test/ subdirectory for tests — never touch real user data."""
+    import shutil
+
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    test_dir = os.path.join(root, "data", "_test")
+
+    # Clean only test data, not real user data
+    if os.path.exists(test_dir):
+        shutil.rmtree(test_dir)
+    os.makedirs(test_dir, exist_ok=True)
+
+    monkeypatch.setattr(app.progress, "DATA_DIR", test_dir)
+
     yield
-    if os.path.exists(DATA_DIR):
-        shutil.rmtree(DATA_DIR)
+    # Test data preserved for user inspection — not deleted
 
 
 class TestGetProgress:

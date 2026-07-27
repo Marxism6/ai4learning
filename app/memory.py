@@ -16,7 +16,22 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+import jieba
+
 logger = logging.getLogger(__name__)
+
+
+def _jieba_tokenize(text):
+    """Tokenize CJK text with jieba for FTS5 indexing/search.
+
+    Returns space-separated tokens. Text is stored in FTS5 after tokenization;
+    search queries are tokenized the same way for consistent matching.
+    """
+    if not text:
+        return ""
+    words = jieba.cut(text, cut_all=False)
+    return " ".join(words)
+
 
 DATA_DIR = "data"
 
@@ -51,13 +66,23 @@ def _init_db(username: str):
             created_at TEXT
         )
     """)
-    # Enable FTS5 for full-text search (manually synced, not content-sync)
+    # Enable FTS5 for full-text search (manually synced, not content-sync).
+    # Chinese text is pre-tokenized with jieba before indexing.
     try:
+        # Drop old FTS5 table (schema migration from non-jieba version)
+        conn.execute("DROP TABLE IF EXISTS sessions_fts")
         conn.execute("""
             CREATE VIRTUAL TABLE IF NOT EXISTS sessions_fts USING fts5(
                 block_title, preview, history_json
             )
         """)
+        # Re-index existing sessions into FTS5 (with jieba tokenization)
+        existing = conn.execute("SELECT rowid, block_title, preview, history_json FROM sessions").fetchall()
+        for r in existing:
+            conn.execute(
+                "INSERT INTO sessions_fts(rowid, block_title, preview, history_json) VALUES (?, ?, ?, ?)",
+                (r[0], _jieba_tokenize(r[1]), _jieba_tokenize(r[2]), _jieba_tokenize(r[3])),
+            )
     except sqlite3.OperationalError:
         pass  # FTS5 may not be available, fall back gracefully
     conn.commit()
@@ -91,13 +116,17 @@ def save_session(
             datetime.now(timezone.utc).isoformat(),
         ),
     )
-    # Sync FTS5 index: delete old + insert new
+    # Sync FTS5 index: delete old + insert new (jieba-tokenized)
     try:
         conn.execute("DELETE FROM sessions_fts WHERE rowid = (SELECT rowid FROM sessions WHERE id = ?)", (session_id,))
         conn.execute(
-            "INSERT INTO sessions_fts(rowid, block_title, preview, history_json) "
-            "SELECT rowid, block_title, preview, history_json FROM sessions WHERE id = ?",
-            (session_id,),
+            "INSERT INTO sessions_fts(rowid, block_title, preview, history_json) VALUES (?, ?, ?, ?)",
+            (
+                conn.execute("SELECT rowid FROM sessions WHERE id = ?", (session_id,)).fetchone()[0],
+                _jieba_tokenize(block_title),
+                _jieba_tokenize(preview),
+                _jieba_tokenize(history_json),
+            ),
         )
     except sqlite3.OperationalError:
         pass  # FTS5 unavailable, skip
@@ -201,12 +230,22 @@ def search_sessions(username: str, query: str, limit: int = 10) -> list[dict]:
     _init_db(username)
     conn = sqlite3.connect(_db_path(username))
     results = []
-    # Rewrite multi-word queries: "newton convergence" → "newton OR convergence"
-    words = query.strip().split()
-    fts_query = " OR ".join(words) if len(words) > 1 else query.strip()
+    # Rewrite query: jieba-cut Chinese, then OR-connect
+    cut_words = list(jieba.cut(query.strip(), cut_all=False))
+    # Filter out pure whitespace/punctuation tokens
+    meaningful = [
+        w.strip() for w in cut_words
+        if w.strip() and not all(c in '，。！？、；：""''（）　' for c in w)
+    ]
+    if len(meaningful) > 1:
+        fts_query = " OR ".join(meaningful)
+    elif meaningful:
+        fts_query = meaningful[0]
+    else:
+        fts_query = query.strip()
     rows = []
     try:
-        # Try FTS5
+        # Try FTS5 with jieba tokenizer
         rows = conn.execute(
             "SELECT s.id, s.block_slug, s.block_title, s.message_count, s.preview, s.created_at "
             "FROM sessions s JOIN sessions_fts f ON s.rowid = f.rowid "
@@ -216,8 +255,7 @@ def search_sessions(username: str, query: str, limit: int = 10) -> list[dict]:
     except sqlite3.OperationalError:
         pass  # FTS5 unavailable; rows stays empty, will fall through to LIKE below
 
-    # FTS5 unicode61 tokenizer doesn't support CJK segmentation, so queries like
-    # "牛顿" may return 0 rows even when matching data exists. Fall back to LIKE.
+    # If FTS5 returned nothing (possible edge case), fall back to LIKE
     if not rows:
         pattern = f"%{query}%"
         rows = conn.execute(

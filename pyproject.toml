@@ -9,6 +9,7 @@ dependencies = [
     "uvicorn[standard]",
     "httpx",
     "python-multipart",
+    "jieba",
 ]
 
 [project.scripts]

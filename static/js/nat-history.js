@@ -78,6 +78,7 @@
     if (N.state.history.length >= 2) {
       N.triggerMemoryReview(N.state.history);
     }
+    N.state.sessionId = '';  // 重置 sessionId，下次存档用新 ID
   };
 
   function renderHistoryListFromEntries(list) {

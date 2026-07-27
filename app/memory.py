@@ -395,6 +395,9 @@ async def run_memory_review(
     if not recent_history or len(recent_history) < 2:
         return
 
+    # Safety cap: last 50 messages max to prevent token overflow
+    recent_history = recent_history[-50:]
+
     # Build history text from the recent exchanges
     history_lines = []
     for msg in recent_history:

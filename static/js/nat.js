@@ -87,7 +87,7 @@ window.NAT = (function () {
   N.triggerMemoryReview = function (sessionHistory) {
     if (!N.state.memoryEnabled || !N.state.memModel) return;
     var enc = encodeURIComponent(N.state.username);
-    var recent = (sessionHistory || N.state.history).slice(-20);
+    var recent = sessionHistory || N.state.history;
     fetch('/api/memory/review/' + enc, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

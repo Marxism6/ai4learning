@@ -204,6 +204,7 @@ def search_sessions(username: str, query: str, limit: int = 10) -> list[dict]:
     # Rewrite multi-word queries: "newton convergence" → "newton OR convergence"
     words = query.strip().split()
     fts_query = " OR ".join(words) if len(words) > 1 else query.strip()
+    rows = []
     try:
         # Try FTS5
         rows = conn.execute(
@@ -213,7 +214,11 @@ def search_sessions(username: str, query: str, limit: int = 10) -> list[dict]:
             (fts_query, limit),
         ).fetchall()
     except sqlite3.OperationalError:
-        # Fallback to simple LIKE
+        pass  # FTS5 unavailable; rows stays empty, will fall through to LIKE below
+
+    # FTS5 unicode61 tokenizer doesn't support CJK segmentation, so queries like
+    # "牛顿" may return 0 rows even when matching data exists. Fall back to LIKE.
+    if not rows:
         pattern = f"%{query}%"
         rows = conn.execute(
             "SELECT id, block_slug, block_title, message_count, preview, created_at "

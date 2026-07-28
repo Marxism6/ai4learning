@@ -12,6 +12,7 @@ import json
 import logging
 import os
 import sqlite3
+import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -34,6 +35,14 @@ def _jieba_tokenize(text):
 
 
 DATA_DIR = "data"
+_db_locks: dict[str, threading.Lock] = {}
+
+
+def _db_lock_for(username: str) -> threading.Lock:
+    """Get (or create) a per-user lock for serializing SQLite writes."""
+    if username not in _db_locks:
+        _db_locks[username] = threading.Lock()
+    return _db_locks[username]
 
 
 def _user_dir(username: str) -> str:
@@ -99,39 +108,40 @@ def save_session(
     history: list[dict],
 ) -> None:
     """Save a conversation session to the user's SQLite database."""
-    _init_db(username)
-    path = _db_path(username)
-    conn = sqlite3.connect(path)
-    history_json = json.dumps(history, ensure_ascii=False)
-    conn.execute(
-        """INSERT OR REPLACE INTO sessions (id, block_slug, block_title, message_count, preview, history_json, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?)""",
-        (
-            session_id,
-            block_slug or "",
-            block_title,
-            message_count,
-            preview,
-            history_json,
-            datetime.now(timezone.utc).isoformat(),
-        ),
-    )
-    # Sync FTS5 index: delete old + insert new (jieba-tokenized)
-    try:
-        conn.execute("DELETE FROM sessions_fts WHERE rowid = (SELECT rowid FROM sessions WHERE id = ?)", (session_id,))
+    with _db_lock_for(username):
+        _init_db(username)
+        path = _db_path(username)
+        conn = sqlite3.connect(path)
+        history_json = json.dumps(history, ensure_ascii=False)
         conn.execute(
-            "INSERT INTO sessions_fts(rowid, block_title, preview, history_json) VALUES (?, ?, ?, ?)",
+            """INSERT OR REPLACE INTO sessions (id, block_slug, block_title, message_count, preview, history_json, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (
-                conn.execute("SELECT rowid FROM sessions WHERE id = ?", (session_id,)).fetchone()[0],
-                _jieba_tokenize(block_title),
-                _jieba_tokenize(preview),
-                _jieba_tokenize(history_json),
+                session_id,
+                block_slug or "",
+                block_title,
+                message_count,
+                preview,
+                history_json,
+                datetime.now(timezone.utc).isoformat(),
             ),
         )
-    except sqlite3.OperationalError:
-        pass  # FTS5 unavailable, skip
-    conn.commit()
-    conn.close()
+        # Sync FTS5 index: delete old + insert new (jieba-tokenized)
+        try:
+            conn.execute("DELETE FROM sessions_fts WHERE rowid = (SELECT rowid FROM sessions WHERE id = ?)", (session_id,))
+            conn.execute(
+                "INSERT INTO sessions_fts(rowid, block_title, preview, history_json) VALUES (?, ?, ?, ?)",
+                (
+                    conn.execute("SELECT rowid FROM sessions WHERE id = ?", (session_id,)).fetchone()[0],
+                    _jieba_tokenize(block_title),
+                    _jieba_tokenize(preview),
+                    _jieba_tokenize(history_json),
+                ),
+            )
+        except sqlite3.OperationalError:
+            pass  # FTS5 unavailable, skip
+        conn.commit()
+        conn.close()
 
 
 def list_sessions(username: str, limit: int = 50) -> list[dict]:
@@ -188,38 +198,40 @@ def get_session(username: str, session_id: str) -> dict | None:
 
 def delete_session(username: str, session_id: str) -> bool:
     """Delete a session. Returns True if deleted, False if not found."""
-    _init_db(username)
-    conn = sqlite3.connect(_db_path(username))
-    try:
-        # Remove from FTS5 index first
+    with _db_lock_for(username):
+        _init_db(username)
+        conn = sqlite3.connect(_db_path(username))
         try:
-            conn.execute("DELETE FROM sessions_fts WHERE rowid = (SELECT rowid FROM sessions WHERE id = ?)", (session_id,))
+            # Remove from FTS5 index first
+            try:
+                conn.execute("DELETE FROM sessions_fts WHERE rowid = (SELECT rowid FROM sessions WHERE id = ?)", (session_id,))
+            except sqlite3.OperationalError:
+                pass
+            cur = conn.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
+            conn.commit()
+            deleted = cur.rowcount > 0
         except sqlite3.OperationalError:
-            pass
-        cur = conn.execute("DELETE FROM sessions WHERE id = ?", (session_id,))
-        conn.commit()
-        deleted = cur.rowcount > 0
-    except sqlite3.OperationalError:
-        deleted = False
-    conn.close()
-    return deleted
+            deleted = False
+        conn.close()
+        return deleted
 
 
 def clear_sessions(username: str) -> None:
     """Delete all sessions for a user."""
-    _init_db(username)
-    conn = sqlite3.connect(_db_path(username))
-    try:
-        conn.execute("DELETE FROM sessions")
-        # Clean FTS5 index
+    with _db_lock_for(username):
+        _init_db(username)
+        conn = sqlite3.connect(_db_path(username))
         try:
-            conn.execute("DELETE FROM sessions_fts")
+            conn.execute("DELETE FROM sessions")
+            # Clean FTS5 index
+            try:
+                conn.execute("DELETE FROM sessions_fts")
+            except sqlite3.OperationalError:
+                pass
+            conn.commit()
         except sqlite3.OperationalError:
             pass
-        conn.commit()
-    except sqlite3.OperationalError:
-        pass
-    conn.close()
+        conn.close()
 
 
 def search_sessions(username: str, query: str, limit: int = 10) -> list[dict]:

@@ -135,23 +135,23 @@
         return r.json();
       })
       .then(function (s) {
-        applyRestoredHistory(s.history || [], s.blockSlug);
+        applyRestoredHistory(s.history || [], s.blockSlug, entry.id);
       })
       .catch(function () {
         // Fallback to localStorage entry data
-        applyRestoredHistory(entry.history || [], entry.blockSlug);
+        applyRestoredHistory(entry.history || [], entry.blockSlug, entry.id);
         // Also remove from localStorage
         var key = 'history-' + N.state.username;
         var list = N.lsGetJSON(key, []).filter(function (e) { return e.id !== entry.id; });
         N.lsSetJSON(key, list);
       });
 
-    function applyRestoredHistory(history, blockSlug) {
+    function applyRestoredHistory(history, blockSlug, restoreId) {
       N.closeHistory();
       N.state.history = history.slice();
       N.state.blockSlug = blockSlug || null;
       N.state.viewingHistory = false;
-      N.state.sessionId = '';  // 重置，下次存档生成新 ID
+      N.state.sessionId = restoreId || '';  // 用原条目ID，后续saveSession用REPLACE而非INSERT
 
       N.els.conversation.querySelectorAll('.message').forEach(function (el) { if (el.dataset.message !== 'welcome') el.remove(); });
       var w = N.els.conversation.querySelector('[data-message="welcome"]'); if (w) w.style.display = 'none';
@@ -161,7 +161,10 @@
       });
       N.els.inputField.disabled = false; N.els.sendButton.disabled = false; N.els.uploadButton.disabled = false;
       N.els.historyViewBar.style.display = 'none';
-      N.updateBlockSelectorLabel(); N.saveSession(); N.scrollToBottom(); N.els.inputField.focus();
+      N.updateBlockSelectorLabel();
+      // 只缓存到 localStorage（页面刷新恢复用），不 POST 到服务器（数据已在 DB 中）
+      N.lsSetJSON('session-' + N.state.username, { history: N.state.history, blockSlug: N.state.blockSlug });
+      N.scrollToBottom(); N.els.inputField.focus();
     }
   };
 

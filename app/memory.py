@@ -34,6 +34,26 @@ def _jieba_tokenize(text):
     return " ".join(words)
 
 
+# Pre-load domain terms into jieba so compound terms are tokenized correctly
+_DOMAIN_TERMS = [
+    # Knowledge block names (zh)
+    "插值法", "牛顿法", "高斯消元法", "高斯消元", "数值积分",
+    "龙格库塔", "龙格-库塔", "LU分解", "LU 分解",
+    "不动点迭代", "特征值方法",
+    # Common numerical analysis terms (zh)
+    "拉格朗日", "拉格朗日插值", "拉格朗日基函数",
+    "牛顿差商", "牛顿插值", "牛顿-拉夫森",
+    "列主元消去", "列主元",
+    "梯形法则", "辛普森法则", "辛普森", "龙贝格积分",
+    "高斯求积", "牛顿-柯特斯",
+    "欧拉法", "乔列斯基分解", "乔列斯基",
+    "幂法", "反迭代", "QR算法", "QR 算法",
+    "收敛阶", "截断误差", "龙格现象", "压缩映射",
+    "前代回代", "前代", "回代", "收敛性", "收敛速度",
+]
+for term in _DOMAIN_TERMS:
+    jieba.add_word(term, freq=100000)  # high freq to ensure compound recognition
+
 DATA_DIR = "data"
 _db_locks: dict[str, threading.Lock] = {}
 

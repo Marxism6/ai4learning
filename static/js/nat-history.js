@@ -135,8 +135,7 @@
         return r.json();
       })
       .then(function (s) {
-        // 先渲染，成功后再删除服务端记录（避免渲染失败导致数据丢失）
-        applyRestoredHistory(s.history || [], s.blockSlug, s.id, enc);
+        applyRestoredHistory(s.history || [], s.blockSlug);
       })
       .catch(function () {
         // Fallback to localStorage entry data
@@ -147,11 +146,16 @@
         N.lsSetJSON(key, list);
       });
 
-    function applyRestoredHistory(history, blockSlug, sessionId, enc) {
+    function applyRestoredHistory(history, blockSlug) {
+      // 先归档当前活跃会话，防止数据丢失
+      N.archiveCurrentSession();
+
       N.closeHistory();
       N.state.history = history.slice();
       N.state.blockSlug = blockSlug || null;
       N.state.viewingHistory = false;
+      N.state.sessionId = '';  // 重置，下次存档生成新 ID
+
       N.els.conversation.querySelectorAll('.message').forEach(function (el) { if (el.dataset.message !== 'welcome') el.remove(); });
       var w = N.els.conversation.querySelector('[data-message="welcome"]'); if (w) w.style.display = 'none';
       N.state.history.forEach(function (m) {
@@ -161,10 +165,6 @@
       N.els.inputField.disabled = false; N.els.sendButton.disabled = false; N.els.uploadButton.disabled = false;
       N.els.historyViewBar.style.display = 'none';
       N.updateBlockSelectorLabel(); N.saveSession(); N.scrollToBottom(); N.els.inputField.focus();
-      // 渲染成功后删除服务端记录
-      if (sessionId && enc) {
-        fetch('/api/sessions/' + enc + '/' + sessionId, { method: 'DELETE' }).catch(function () {});
-      }
     }
   };
 

@@ -14,7 +14,7 @@
 | 技术栈 | Python FastAPI 后端 + 原生 HTML/JS/CSS 前端 + KaTeX + Chart.js |
 | 启动 | `uv run serve` → http://localhost:8000 |
 | 后端测试 | `uv run pytest tests/ -q`（71 个，只覆盖后端 API） |
-| 前端验证 | **必须用 ego-in-wsl 浏览器实测**（pytest 覆盖不到前端渲染） |
+| 前端验证 | **必须用 gstack /qa-only 浏览器实测**（pytest 覆盖不到前端渲染） |
 | 当前版本 | v0.2.2（已发布） |
 | PRD | GitHub Issue #1 |
 | 设计系统 | DESIGN.md（不可修改） |
@@ -77,7 +77,7 @@
 ## 验证
 1. uv run pytest tests/ -q
 2. curl 验证 API
-3. ego-in-wsl 浏览器实测（如涉及前端）
+3. gstack /qa-only 浏览器实测（如涉及前端）
 ```
 
 ## 两重循环（本项目实例）
@@ -86,14 +86,12 @@
 外循环（code-review 驱动 / 静态分析）
 │
 ├── 内循环（浏览器测试驱动 / 动态测试）
-│   ├── 1. 用 .scratch/browser-test-prompt.md 派 subagent 做 ego-in-wsl 实操测试
-│   │      → subagent 返回 bug 报告 + 截图（存 bugpicture/）
-│   │      ★ 每次派测试 agent 时同时要求记录 ego-in-wsl 工具本身的使用痛点
-│   │        → 写入 .scratch/ego-in-wsl-bugs/NN-描述.md（每问题一个文件）
-│   ├── 2. 策划者查证：浏览器复现 + 代码分析 → 判定真伪
-│   │      （注意：测试 agent 的报告可能有误报，必须亲自复现！）
-│   ├── 3. 真 bug → /triage 切片 → gh issue create → 写修复方案+提示词 → 派 subagent 修复
-│   ├── 4. 验证修复：uv run pytest + ego-in-wsl 浏览器实测
+│   ├── 1. 派 subagent 用 gstack /qa-only 做系统测试
+│      → 返回结构化报告（健康评分、截图、复现步骤）
+│   ├── 2. 策划者查证：代码分析 + 报告研判 → 判定真伪
+│   │      （注意：测试 agent 的报告可能有误报，必须亲自查证！）
+│   ├── 3. 真 bug → 写修复方案 → 派 subagent 修复
+│   ├── 4. 验证修复：uv run pytest + gstack /qa-only 回归
 │   └── 5. 循环直到连续一轮 0 真 bug
 │
 ├── 内循环收敛后：
@@ -109,7 +107,7 @@
 
 通用查证框架见 ITERATION-WORKFLOW.md。本项目特别注意：
 
-1. **前端 bug 必须浏览器复现** — pytest 只测后端。前端渲染/交互 bug（如 KaTeX 渲染、语言切换、面板显隐）只能用 ego-in-wsl 复现。
+1. **前端 bug 必须浏览器复现** — pytest 只测后端。前端渲染/交互 bug（如 KaTeX 渲染、语言切换、面板显隐）只能用 gstack /qa-only 复现。
 2. **警惕测试 agent 误报** — 历史上有 3 次误报：
    - 把 KaTeX 的 `textContent`（"E=mc2E = mc^2..."）当成显示内容（实际视觉渲染正确）
    - 把 `innerHTML` 残留当成"面板未隐藏"（实际 `display: none` 已隐藏）
@@ -118,23 +116,40 @@
 3. **后端 bug 用 curl + pytest** — API 行为用 `curl http://localhost:8000/api/...` 验证。
 4. **gh 命令用 --json** — `gh issue view <N> --json title,body`（默认文本输出会触发 projectCards 弃用报错）。
 
-## ego-in-wsl 使用要点（派测试 subagent 时务必告知）
+## gstack 浏览器测试要点
 
-完整测试提示词见 `.scratch/browser-test-prompt.md`。核心坑：
+内循环浏览器测试使用 gstack `/qa-only` skill。该 skill 自动处理导航、交互、截图、断言、报告生成，不需要手动提示词文件。
 
-1. 冷启动超时（5s）→ 先 `run -e "log('boot')"` 忽略报错，sleep 10 再 status
-2. ref（@N）不跨 run 持久化 → snapshot+操作放同一脚本
-3. `window.confirm()` 阻塞 → 先 `evaluate(() => window.confirm = () => true)`
-4. 隐藏 checkbox（记忆开关）→ 点 `label.settings-switch`
-5. 文本定位用 `:text-is("...")` 而非 `hasText`
-6. 截图：`cdp.send('Page.captureScreenshot', {format:'jpeg', quality:70})` → base64 → `base64 -d > bugpicture/xxx.jpg`
-7. **`$` 字符损坏** → ego-in-wsl 环境中 `$` 被损坏，LaTeX 输入通过 `page.evaluate` 操作 `inputField.value` 或点数学键盘按钮
-8. **daemon 崩溃恢复** → socket 残留无法重启时，先 `ego-in-wsl kill --session bugtest`，sleep 3 再重新启动
-9. **async/await 必需** → `-e` 脚本中 `page.evaluate()` 必须 `await`，否则返回 Promise
-10. **CDP 截图不可用** → `page.cdp` 未定义，改 `ego-in-wsl screenshot`
-11. **waitForSelector 不可用** → snapshot + 轮询替代
-12. **page.fill 不触发 input** → 手动 `dispatchEvent(new Event('input'))`
-13. **超时** → 对话需 40s+ 超时（LLM 响应时间）
+### /qa-only 调用方式
+
+```
+派 subagent（general-purpose），提示词包含：
+- 测试目标和范围
+- 应用 URL（http://localhost:8000）
+- 测试用户名规则（每次用新用户名，如 test_rN）
+- 需要测试的具体功能点
+- 截图保存目录（bugpicture/）
+- 要求输出表格汇总 + 详细发现
+```
+
+### 已知注意点
+
+1. `/qa-only` 是 report-only，不会修改代码 — 适合内循环
+2. 返回结构化报告（健康评分、console 错误、功能/UX/视觉评分）
+3. 截图自动处理，不需要手动管道
+4. 如果 API key 失效，对话测试会跳过（报告标注 N/A）
+5. 复杂多步流程可能需要分多次 `/qa-only` 调用
+
+### 测试提示词模板
+
+```
+用 gstack /qa-only 测试 http://localhost:8000。
+新用户 test_rN。配置 API（Key=..., Base=..., Model=...）。
+测试点：
+- [具体功能列表]
+- data/ 完整性检查（ls data/test_rN/）
+截图存 bugpicture/。输出表格汇总。
+```
 
 ## 测试用 API 配置
 
@@ -173,9 +188,9 @@
 
 执行顺序：<按依赖排列，每个 issue 一个 commit>
 
-验证（关键：pytest 只覆盖后端，前端必须 ego-in-wsl 实测）：
+验证（关键：pytest 只覆盖后端，前端必须 gstack /qa-only 实测）：
 1. uv run pytest tests/ -q → 全部通过
-2. uv run serve 后用 ego-in-wsl 实测各修复点（参考 .scratch/browser-test-prompt.md）
+2. uv run serve 后用 gstack /qa-only 实测各修复点
 3. 每个 issue 修复后 gh issue close <N> --comment "已修复：<说明>"
 
 用中文沟通，代码和技术术语用英文。不要修改 DESIGN.md。
@@ -188,7 +203,7 @@
 ├── .scratch/
 │   ├── browser-test-prompt.md   # 浏览器测试提示词（含 API key，勿提交）
 │   ├── data-persistence.md      # 持久化机制完整文档
-│   ├── ego-in-wsl-bugs/         # ego-in-wsl 工具本身的使用痛点记录
+│   └── RELEASE-NOTES-*.md       # Release notes（参考用）
 │   ├── RELEASE-NOTES-*.md       # Release notes（参考用）
 │   ├── fix-plan-*.md            # 修复方案（修复完成后删除）
 │   └── feature-*.md             # 功能方案（完成后删除）
@@ -264,7 +279,7 @@
 .scratch/
 ├── browser-test-prompt.md     # 活跃测试提示词
 ├── data-persistence.md        # 持久化机制文档
-├── ego-in-wsl-bugs/           # ego-in-wsl 工具痛点记录
+└── RELEASE-NOTES-*.md         # Release notes（保留参考）
 └── RELEASE-NOTES-*.md         # Release notes（保留参考）
 ```
 

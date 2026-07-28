@@ -46,6 +46,9 @@
     N.loadSettings(); N.closeHistory();
     N.els.settingsOverlay.style.display = 'flex';
     N.syncSettingsLangUI(); N.syncSettingsThemeUI(); N.syncSettingsMemoryUI();
+    N.els.studyModeToggle.querySelectorAll('.settings-option').forEach(function(b) {
+      b.classList.toggle('active', b.dataset.mode === N.state.studyMode);
+    });
     if (N.els.apiKeyInput.value.trim() && N.els.modelList.children.length === 0) N.els.detectModelsBtn.click();
   };
   N.closeSettings = function () { N.els.settingsOverlay.style.display = 'none'; };
@@ -81,6 +84,14 @@
     N.els.settingsClose.addEventListener('click', N.closeSettings);
     N.els.settingsSave.addEventListener('click', function () { N.saveSettings(); N.closeSettings(); });
     N.els.settingsOverlay.addEventListener('click', function (e) { if (e.target === N.els.settingsOverlay) N.closeSettings(); });
+    N.els.studyModeToggle.addEventListener('click', function(e) {
+      var btn = e.target.closest('.settings-option');
+      if (!btn || !btn.dataset.mode) return;
+      N.state.studyMode = btn.dataset.mode;
+      N.els.studyModeToggle.querySelectorAll('.settings-option').forEach(function(b) {
+        b.classList.toggle('active', b.dataset.mode === N.state.studyMode);
+      });
+    });
   };
 
   N.bindModelDetection = function () {

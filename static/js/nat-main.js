@@ -82,15 +82,7 @@
     N.bindChatEvents();
     N.bindUploadEvents();
 
-    N.els.studyModeToggle.addEventListener('click', function(e) {
-        var btn = e.target.closest('.study-mode-option');
-        if (!btn || !btn.dataset.mode) return;
-        N.state.studyMode = btn.dataset.mode;
-        N.els.studyModeToggle.querySelectorAll('.study-mode-option').forEach(function(b) {
-            b.classList.toggle('active', b.dataset.mode === N.state.studyMode);
-        });
-    });
-  };
+    };
 
   // ====== Init ======
   N.init = function () {

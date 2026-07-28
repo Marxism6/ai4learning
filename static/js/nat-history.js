@@ -135,9 +135,8 @@
         return r.json();
       })
       .then(function (s) {
-        // Remove from server after restoration
-        fetch('/api/sessions/' + enc + '/' + entry.id, { method: 'DELETE' }).catch(function () {});
-        applyRestoredHistory(s.history || [], s.blockSlug);
+        // 先渲染，成功后再删除服务端记录（避免渲染失败导致数据丢失）
+        applyRestoredHistory(s.history || [], s.blockSlug, s.id, enc);
       })
       .catch(function () {
         // Fallback to localStorage entry data
@@ -148,7 +147,7 @@
         N.lsSetJSON(key, list);
       });
 
-    function applyRestoredHistory(history, blockSlug) {
+    function applyRestoredHistory(history, blockSlug, sessionId, enc) {
       N.closeHistory();
       N.state.history = history.slice();
       N.state.blockSlug = blockSlug || null;
@@ -162,6 +161,10 @@
       N.els.inputField.disabled = false; N.els.sendButton.disabled = false; N.els.uploadButton.disabled = false;
       N.els.historyViewBar.style.display = 'none';
       N.updateBlockSelectorLabel(); N.saveSession(); N.scrollToBottom(); N.els.inputField.focus();
+      // 渲染成功后删除服务端记录
+      if (sessionId && enc) {
+        fetch('/api/sessions/' + enc + '/' + sessionId, { method: 'DELETE' }).catch(function () {});
+      }
     }
   };
 

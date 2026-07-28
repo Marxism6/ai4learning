@@ -29,7 +29,7 @@
 
   <!-- SETTINGS OVERLAY -->
   <div class="settings-overlay" id="settingsOverlay" style="display:none;">
-    <div class="settings-card">
+    <div class="settings-card" onclick="event.stopPropagation()">
       <div class="settings-title" data-i18n="settingsTitle">设置（Settings）</div>
 
       <label class="settings-label" data-i18n="langLabel">语言（Language）</label>
@@ -56,6 +56,12 @@
         <p class="body-sm settings-hint" data-i18n="memModelHint">用于后台记忆提取的廉价模型，不影响主对话质量</p>
       </div>
 
+      <label class="settings-label" data-i18n="studyModeLabel">学习模式</label>
+      <div class="settings-toggle-group" id="studyModeToggle">
+        <button class="settings-option active" data-mode="learn" data-i18n="modeLearn">学习</button>
+        <button class="settings-option" data-mode="speed" data-i18n="modeSpeed">速通</button>
+      </div>
+
       <hr class="settings-divider">
 
       <label class="settings-label" data-i18n="apiKeyLabel">API Key</label>
@@ -76,7 +82,7 @@
 
   <!-- HISTORY OVERLAY -->
   <div class="settings-overlay" id="historyOverlay" style="display:none;">
-    <div class="settings-card history-card">
+    <div class="settings-card history-card" onclick="event.stopPropagation()">
       <div class="settings-title" data-i18n="historyTitle">历史对话</div>
       <div class="history-search-bar">
         <input type="text" class="settings-input history-search-input" id="historySearchInput" data-i18n-placeholder="searchHistory" placeholder="搜索历史对话...">
@@ -97,10 +103,6 @@
         <span class="block-selector-label" id="blockSelectorLabel">对话</span>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
       </button>
-      <div class="study-mode-toggle" id="studyModeToggle">
-        <button class="study-mode-option active" data-mode="learn" data-i18n="modeLearn">学习</button>
-        <button class="study-mode-option" data-mode="speed" data-i18n="modeSpeed">速通</button>
-      </div>
       <div class="block-selector-menu" id="blockSelectorMenu" style="display:none;"></div>
     </div>
     <div class="nav-controls">

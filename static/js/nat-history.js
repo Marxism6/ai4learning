@@ -92,8 +92,12 @@
       var card = document.createElement('div'); card.className = 'history-entry';
       var date = entry.timestamp ? new Date(entry.timestamp).toLocaleString() : '';
       var preview = N.templateFn('historyPreview')(entry.messageCount, (entry.preview || '').slice(0, 60));
-      card.innerHTML = '<div class="history-entry-header"><span class="history-entry-block">' + N.escapeHtml(entry.blockTitle || '') + '</span><span class="history-entry-date">' + N.escapeHtml(date) + '</span></div>' +
+      card.innerHTML = '<div class="history-entry-header"><span class="history-entry-block">' + N.escapeHtml(entry.blockTitle || '') + '</span><span class="history-entry-date">' + N.escapeHtml(date) + '</span><button class="history-entry-delete" title="' + N.t('deleteHistoryEntry') + '">×</button></div>' +
         '<div class="history-entry-preview">' + N.escapeHtml(preview) + '</div>';
+      card.querySelector('.history-entry-delete').addEventListener('click', function(e) {
+        e.stopPropagation();  // 防止触发卡片的 viewHistory
+        N.deleteHistoryEntry(entry.id, card);
+      });
       card.addEventListener('click', function () { N.viewHistory(entry); });
       N.els.historyList.appendChild(card);
     });
@@ -124,6 +128,19 @@
   N.searchHistory = function () {
     var q = (N.els.historySearchInput.value || '').trim();
     N.renderHistoryList(q || undefined); // undefined → list all, '' → show empty
+  };
+
+  N.deleteHistoryEntry = function (entryId, cardEl) {
+    if (!N.state.username) return;
+    // 从服务器删除
+    var enc = encodeURIComponent(N.state.username);
+    fetch('/api/sessions/' + enc + '/' + entryId, { method: 'DELETE' }).catch(function () {});
+    // 从 localStorage 删除
+    var key = 'history-' + N.state.username;
+    var list = N.lsGetJSON(key, []).filter(function (e) { return e.id !== entryId; });
+    N.lsSetJSON(key, list);
+    // 从 DOM 中移除
+    if (cardEl) cardEl.remove();
   };
 
   N.viewHistory = function (entry) {

@@ -67,8 +67,9 @@
   };
 
   N.writeProgress = async function (slug, st, ml) {
-    if (!N.state.username) return;
-    try { var b = { block_slug: slug }; if (st) b.status = st; if (ml != null) b.mastery_level = ml; var r = await fetch('/api/progress/' + encodeURIComponent(N.state.username), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }); if (!r.ok) { console.warn('writeProgress status', r.status); return; } N.state.progress = await r.json(); N.updateProgressUI(); } catch (e) { console.error('writeProgress', e); }
+    if (!N.state.username || !slug) return;
+    var _slug = slug;  // snapshot to prevent race on block switch
+    try { var b = { block_slug: _slug }; if (st) b.status = st; if (ml != null) b.mastery_level = ml; var r = await fetch('/api/progress/' + encodeURIComponent(N.state.username), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }); if (!r.ok) { console.warn('writeProgress status', r.status); return; } N.state.progress = await r.json(); N.updateProgressUI(); } catch (e) { console.error('writeProgress', e); }
   };
 
   N.loadBlocks = async function () {
@@ -87,7 +88,9 @@
   N.startBlockAssessment = async function (slug) {
     if (N.state.isLoading) return; N.state.isLoading = true; N.els.inputField.disabled = true; N.els.sendButton.disabled = true; N.setTypingIndicator(true);
     var mem = N.maybeBuildMemory();
-    var msg = N.state.lang === 'zh' ? '[SYSTEM] 学生选择了知识块：' + slug + '。请开始主动评估。' : '[SYSTEM] Student selected block: ' + slug + '. Begin proactive assessment.';
+    var msg = N.state.lang === 'zh'
+      ? '[SYSTEM] 学生选择了新知识块：' + slug + '。之前的内容已结束，请针对此块重新开始评估，不要引用或延续之前的对话。'
+      : '[SYSTEM] Student selected a new block: ' + slug + '. Previous discussion is over. Start fresh assessment for this block only - do not reference prior conversations.';
     try {
       var r = await fetch('/api/chat', { method: 'POST', headers: N.buildApiHeaders({}), body: JSON.stringify({ username: N.state.username, message: msg, block_slug: slug, history: [], memory_summary: mem, lang: N.state.lang }) });
       N.setTypingIndicator(false);

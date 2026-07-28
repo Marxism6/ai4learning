@@ -92,7 +92,7 @@
       ? '[SYSTEM] 学生选择了新知识块：' + slug + '。之前的内容已结束，请针对此块重新开始评估，不要引用或延续之前的对话。'
       : '[SYSTEM] Student selected a new block: ' + slug + '. Previous discussion is over. Start fresh assessment for this block only - do not reference prior conversations.';
     try {
-      var r = await fetch('/api/chat', { method: 'POST', headers: N.buildApiHeaders({}), body: JSON.stringify({ username: N.state.username, message: msg, block_slug: slug, history: [], memory_summary: mem, lang: N.state.lang }) });
+      var r = await fetch('/api/chat', { method: 'POST', headers: N.buildApiHeaders({}), body: JSON.stringify({ username: N.state.username, message: msg, block_slug: slug, history: [], memory_summary: mem, lang: N.state.lang, memory_enabled: N.state.memoryEnabled, study_mode: N.state.studyMode }) });
       N.setTypingIndicator(false);
       if (!r.ok) { var ed = await r.json().catch(function () { return {}; }); if (r.status === 502 && ed.detail && N.isApiKeyError(ed.detail)) { N.addErrorMessage(N.t('noKeyError')); N.openSettings(); if (N.els.apiKeyInput) N.els.apiKeyInput.focus(); return; } throw new Error(N.t('assessmentFailed') + ': ' + (ed.detail || r.status)); }
       var data = await r.json(), reply = data.reply, html = N.markdownToHtml(reply);

@@ -42,6 +42,7 @@ class ChatRequest(BaseModel):
     memory_summary: str | None = None
     memory_enabled: bool = False
     lang: Literal["zh", "en"] = "zh"
+    study_mode: Literal["learn", "speed"] = "learn"
 
 
 class ChatResponse(BaseModel):
@@ -111,7 +112,7 @@ async def chat(request: ChatRequest, llm: LLMClient = Depends(get_llm_client)):
 
     # Build system prompt: base Socratic prompt + block-specific context + language
     block_context = get_block_context(request.block_slug or "", lang=request.lang)
-    system_prompt = get_system_prompt(block_context, lang=request.lang)
+    system_prompt = get_system_prompt(block_context, lang=request.lang, study_mode=request.study_mode)
 
     # Add cross-session memory summary ONLY at conversation start (empty history)
     if request.memory_summary and not request.history:

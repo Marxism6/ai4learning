@@ -12,6 +12,7 @@ window.NAT = (function () {
     username: null, history: [], isLoading: false, theme: 'eye-protection',
     blockSlug: null, blocks: null, progress: null,
     memoryEnabled: false, memModel: '', memoryInjected: false, lang: 'zh', viewingHistory: false, sessionId: '',
+    studyMode: 'learn',
     apiKey: '', model: '', apiBase: '',
   };
 
@@ -51,6 +52,7 @@ window.NAT = (function () {
     historyBackBtn: $('historyBackBtn'),
     mathKeyboardBtn: $('mathKeyboardBtn'), mathPalette: $('mathPalette'),
     inputPreview: $('inputPreview'),
+    studyModeToggle: $('studyModeToggle'),
   };
 
   // ====== Utility functions ======

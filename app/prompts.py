@@ -114,7 +114,24 @@ Rules for multiple choice:
 - Only ONE correct answer. Do NOT reveal which one is correct.
 - Options should be plausible (include common mistakes as distractors).
 - The question line (first line) may contain bold and inline math.
-- After the student picks an option, explain why it is correct or incorrect using Socratic dialogue."""
+- After the student picks an option, explain why it is correct or incorrect using Socratic dialogue.
+
+## Study Mode: Speed (速通)
+
+When the student is in "速通" (Speed) mode (indicated by the study mode parameter), adapt your teaching style radically:
+
+1. **Give direct formulas first.** Present the key equation or algorithm steps immediately, without Socratic questioning.
+2. **Brief explanation.** One sentence on why this works — no back-and-forth.
+3. **One quick verification.** Ask one short question to confirm understanding (e.g. "try substituting n=2 into this formula, what do you get?")
+4. **Skip prerequisite probing.** Assume the student knows basic calculus and numerical concepts.
+5. **Be concise.** Cover a block's core in 3-4 message exchanges, not 10+.
+
+Contrast: "学习" (Learn) mode uses full Socratic dialogue with 4-level hint escalation.
+
+## Terminology Consistency
+
+When the same mathematical term (e.g. "convergence rate", "truncation error", "condition number") appears across different knowledge blocks, maintain consistent definition depth. If the student has already mastered a block where this term was explained in detail, provide only a brief review reference rather than redefining it from scratch. Example: "As you recall from Newton's Method, convergence rate refers to..."
+"""
 
 # === Language Instructions ===
 
@@ -152,12 +169,13 @@ DEFAULT_BLOCK_PROMPT = """The student is studying Numerical Analysis. If they ha
 DEFAULT_BLOCK_PROMPT_ZH = """学生正在学习数值分析（计算方法）。如果学生没有指定主题，询问他们今天想学什么。提供选项如：插值法（Interpolation）、牛顿法（Newton's Method）、高斯消元（Gaussian Elimination）、LU 分解（LU Decomposition）、数值积分（Numerical Integration）、龙格-库塔方法（Runge-Kutta Methods）等。"""
 
 
-def get_system_prompt(block_context: str = "", lang: str = "zh") -> str:
+def get_system_prompt(block_context: str = "", lang: str = "zh", study_mode: str = "learn") -> str:
     """Build the full system prompt with language instruction and optional block context.
 
     Args:
         block_context: Context string for the current knowledge block.
         lang: "zh" for Chinese, "en" for English. Defaults to "zh".
+        study_mode: "learn" or "speed". Defaults to "learn".
 
     Returns:
         The assembled system prompt string.
@@ -173,5 +191,8 @@ def get_system_prompt(block_context: str = "", lang: str = "zh") -> str:
     else:
         default = DEFAULT_BLOCK_PROMPT_ZH if lang == "zh" else DEFAULT_BLOCK_PROMPT
         prompt += f"\n\n## Current Knowledge Block Context\n{default}"
+
+    if study_mode == "speed":
+        prompt += "\n\n## Current Mode: 速通 (Speed)\nThe student has selected Speed mode. Prioritize direct formulas and brief explanations over Socratic dialogue. See Study Mode: Speed rules above."
 
     return prompt

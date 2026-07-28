@@ -20,6 +20,7 @@ const HTML = `<!DOCTYPE html><html lang="zh" data-theme="eye-protection"><head><
 <div id="historyOverlay"><div id="historyList"></div><input id="historySearchInput"><button id="historyClose"></button><button id="clearHistoryBtn"></button></div><div id="historyViewBar" style="display:none"><button id="historyBackBtn"></button></div>
 <button id="historyButton"></button>
 <button id="mathKeyboardBtn"></button><div id="mathPalette"></div>
+<div class="study-mode-toggle" id="studyModeToggle"><button class="study-mode-option active" data-mode="learn"></button><button class="study-mode-option" data-mode="speed"></button></div>
 <div id="inputPreview" style="display:none"></div>
 </body></html>`;
 

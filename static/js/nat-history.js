@@ -147,9 +147,6 @@
       });
 
     function applyRestoredHistory(history, blockSlug) {
-      // 先归档当前活跃会话，防止数据丢失
-      N.archiveCurrentSession();
-
       N.closeHistory();
       N.state.history = history.slice();
       N.state.blockSlug = blockSlug || null;
